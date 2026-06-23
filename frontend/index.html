@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HabboBots — Accede a tu cuenta</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <style>
+    /* ===== AUTH PAGE ===== */
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    /* Users online chip */
+    .online-chip {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      background: rgba(10, 18, 40, 0.9);
+      border: 1px solid var(--border-glow);
+      border-radius: 50px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      backdrop-filter: blur(12px);
+      z-index: 50;
+    }
+    .online-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+      animation: pulse-blue 2s infinite;
+    }
+    .online-count { color: var(--success); font-weight: 700; }
+
+    /* Auth card */
+    .auth-card {
+      width: 100%;
+      max-width: 900px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 540px;
+      background: rgba(8, 14, 32, 0.92);
+      border: 1px solid var(--border-glow);
+      border-radius: 20px;
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 60px rgba(0,195,255,0.1), 0 0 120px rgba(155,48,255,0.08);
+    }
+
+    /* Left — Form panel */
+    .auth-form-panel {
+      padding: 2.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .auth-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 2rem;
+      text-decoration: none;
+    }
+    .auth-logo-icon {
+      width: 38px; height: 38px;
+      background: var(--gradient-main);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900; font-size: 13px;
+      color: #fff;
+      box-shadow: var(--shadow-blue);
+    }
+    .auth-logo-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      background: var(--gradient-main);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Tabs */
+    .auth-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.75rem;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 4px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 0.55rem;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .auth-tab.active {
+      background: var(--gradient-main);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(0,195,255,0.3);
+    }
+
+    /* Forms */
+    .auth-form { display: none; flex-direction: column; gap: 0; }
+    .auth-form.active { display: flex; }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-icon {
+      position: absolute;
+      left: 0.9rem;
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+    }
+    .input-wrapper .form-input {
+      padding-left: 2.5rem;
+    }
+    .input-action {
+      position: absolute;
+      right: 0.75rem;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      transition: color 0.2s;
+    }
+    .input-action:hover { color: var(--blue-primary); }
+    .input-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    .form-group { margin-bottom: 0.85rem; }
+
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1rem 0;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-glow);
+    }
+
+    .btn-discord {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      width: 100%;
+      padding: 0.6rem;
+      background: #5865F2;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-discord:hover {
+      background: #4752C4;
+      box-shadow: 0 0 16px rgba(88,101,242,0.4);
+    }
+
+    .auth-footer-text {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .auth-footer-text a {
+      color: var(--blue-primary);
+      text-decoration: none;
+    }
+    .auth-footer-text a:hover { text-decoration: underline; }
+
+    .forgot-link {
+      font-size: 0.78rem;
+      color: var(--blue-primary);
+      text-decoration: none;
+      float: right;
+    }
+    .forgot-link:hover { text-decoration: underline; }
+
+    /* Right — Welcome panel */
+    .auth-welcome-panel {
+      position: relative;
+      padding: 2.5rem 2rem;
+      background: linear-gradient(135deg, rgba(0,120,255,0.12), rgba(130,0,255,0.18));
+      border-left: 1px solid var(--border-glow);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .welcome-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,195,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,195,255,0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .welcome-glow {
+      position: absolute;
+      bottom: -80px; right: -80px;
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(155,48,255,0.25) 0%, transparent 70%);
+    }
+
+    .welcome-content { position: relative; z-index: 1; }
+
+    .welcome-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.8rem;
+      background: rgba(0,195,255,0.1);
+      border: 1px solid rgba(0,195,255,0.25);
+      border-radius: 50px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--blue-primary);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+
+    .welcome-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .welcome-desc {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.65;
+      margin-bottom: 1.75rem;
+    }
+
+    .welcome-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .welcome-features li {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+    }
+    .feature-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--gradient-main);
+      flex-shrink: 0;
+    }
+
+    .welcome-avatars {
+      display: flex;
+      margin-top: 2rem;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .avatar-stack {
+      display: flex;
+    }
+    .avatar-stack img {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--bg-dark);
+      margin-left: -8px;
+    }
+    .avatar-stack img:first-child { margin-left: 0; }
+    .avatar-count-text {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .auth-page { padding: 0; align-items: flex-start; }
+
+      .auth-card {
+        grid-template-columns: 1fr;
+        min-height: 100vh;
+        border-radius: 0;
+        border: none;
+      }
+
+      .auth-welcome-panel {
+        order: -1;
+        padding: 1.5rem;
+        border-left: none;
+        border-bottom: 1px solid var(--border-glow);
+        min-height: auto;
+      }
+
+      .welcome-title { font-size: 1.2rem; }
+      .welcome-desc { font-size: 0.82rem; }
+      .welcome-avatars, .welcome-features { display: none; }
+
+      .auth-form-panel { padding: 1.5rem; }
+      .online-chip { top: 0.75rem; right: 0.75rem; font-size: 0.72rem; }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .auth-card { max-width: 780px; }
+      .welcome-title { font-size: 1.35rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-glow-1"></div>
+  <div class="bg-glow-2"></div>
+
+  <!-- Online users chip -->
+  <div class="online-chip">
+    <span class="online-dot"></span>
+    <span class="online-count" id="online-count">—</span>
+    <span>online ahora</span>
+  </div>
+
+  <div class="page-wrapper auth-page">
+    <div class="auth-card">
+
+      <!-- ── LEFT: Form Panel ── -->
+      <div class="auth-form-panel">
+        <a href="#" class="auth-logo">
+          <div class="auth-logo-icon">HB</div>
+          <span class="auth-logo-name">HabboBots</span>
+        </a>
+
+        <!-- Tabs -->
+        <div class="auth-tabs" role="tablist">
+          <button class="auth-tab active" data-tab="login"    onclick="switchTab('login')"    role="tab">Iniciar sesión</button>
+          <button class="auth-tab"        data-tab="register" onclick="switchTab('register')" role="tab">Registrarse</button>
+        </div>
+
+        <!-- ── LOGIN FORM ── -->
+        <form id="form-login" class="auth-form active" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label class="form-label">Email o usuario</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              <input type="text" id="login-user" class="form-input" placeholder="tu@email.com" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              Contraseña
+              <a href="forgot.html" class="forgot-link">¿Olvidaste?</a>
+            </label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <input type="password" id="login-pass" class="form-input" placeholder="••••••••" required />
+              <button type="button" class="input-action" onclick="togglePassword('login-pass')" id="login-pass-icon">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full mt-2" style="justify-content:center;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Entrar
+          </button>
+
+          <div class="auth-divider">o continúa con</div>
+
+          <button type="button" class="btn-discord" onclick="loginWithDiscord()">
+            <svg width="18" height="14" viewBox="0 0 71 55" fill="#fff"><path d="M60.1 4.9A58.55 58.55 0 0 0 45.6.3a40.2 40.2 0 0 0-1.8 3.6 54.3 54.3 0 0 0-16.2 0A38.6 38.6 0 0 0 25.8.3 58.46 58.46 0 0 0 11.3 4.9C1.6 19.2-.98 33.1.31 46.8a59.09 59.09 0 0 0 18 9.1 42.07 42.07 0 0 0 3.7-6 38.35 38.35 0 0 1-5.8-2.8c.49-.35.97-.72 1.43-1.1a42.1 42.1 0 0 0 35.68 0c.47.38.95.75 1.43 1.1a38.46 38.46 0 0 1-5.82 2.8 41.94 41.94 0 0 0 3.7 6 58.89 58.89 0 0 0 18.02-9.1C72.48 30.9 68.47 17.1 60.1 4.9ZM23.7 38.3c-3.5 0-6.4-3.2-6.4-7.1s2.8-7.1 6.4-7.1c3.6 0 6.48 3.2 6.4 7.1.01 3.9-2.8 7.1-6.4 7.1Zm23.6 0c-3.5 0-6.4-3.2-6.4-7.1s2.8-7.1 6.4-7.1c3.6 0 6.48 3.2 6.4 7.1 0 3.9-2.8 7.1-6.4 7.1Z"/></svg>
+            Entrar con Discord
+          </button>
+
+          <p class="auth-footer-text mt-3">
+            ¿No tienes cuenta?
+            <a href="#" onclick="switchTab('register'); return false;">Regístrate gratis</a>
+          </p>
+        </form>
+
+        <!-- ── REGISTER FORM ── -->
+        <form id="form-register" class="auth-form" onsubmit="handleRegister(event)">
+          <div class="form-group">
+            <label class="form-label">Usuario</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              <input type="text" id="reg-user" class="form-input" placeholder="tu_usuario" oninput="checkUsername(this.value)" required />
+            </div>
+            <div class="input-hint" id="username-status"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+              <input type="email" id="reg-email" class="form-input" placeholder="tu@email.com" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Contraseña</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <input type="password" id="reg-pass" class="form-input" placeholder="Mínimo 8 caracteres" required />
+              <button type="button" class="input-action" onclick="togglePassword('reg-pass')" id="reg-pass-icon">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full mt-2" style="justify-content:center;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Crear cuenta
+          </button>
+
+          <div class="auth-divider">o regístrate con</div>
+
+          <button type="button" class="btn-discord" onclick="loginWithDiscord()">
+            <svg width="18" height="14" viewBox="0 0 71 55" fill="#fff"><path d="M60.1 4.9A58.55 58.55 0 0 0 45.6.3a40.2 40.2 0 0 0-1.8 3.6 54.3 54.3 0 0 0-16.2 0A38.6 38.6 0 0 0 25.8.3 58.46 58.46 0 0 0 11.3 4.9C1.6 19.2-.98 33.1.31 46.8a59.09 59.09 0 0 0 18 9.1 42.07 42.07 0 0 0 3.7-6 38.35 38.35 0 0 1-5.8-2.8c.49-.35.97-.72 1.43-1.1a42.1 42.1 0 0 0 35.68 0c.47.38.95.75 1.43 1.1a38.46 38.46 0 0 1-5.82 2.8 41.94 41.94 0 0 0 3.7 6 58.89 58.89 0 0 0 18.02-9.1C72.48 30.9 68.47 17.1 60.1 4.9ZM23.7 38.3c-3.5 0-6.4-3.2-6.4-7.1s2.8-7.1 6.4-7.1c3.6 0 6.48 3.2 6.4 7.1.01 3.9-2.8 7.1-6.4 7.1Zm23.6 0c-3.5 0-6.4-3.2-6.4-7.1s2.8-7.1 6.4-7.1c3.6 0 6.48 3.2 6.4 7.1 0 3.9-2.8 7.1-6.4 7.1Z"/></svg>
+            Continuar con Discord
+          </button>
+
+          <p class="auth-footer-text mt-3">
+            Al registrarte aceptas los
+            <a href="terms.html">Términos de uso</a> y la
+            <a href="privacy.html">Política de privacidad</a>
+          </p>
+        </form>
+      </div>
+
+      <!-- ── RIGHT: Welcome Panel ── -->
+      <div class="auth-welcome-panel">
+        <div class="welcome-grid"></div>
+        <div class="welcome-glow"></div>
+
+        <div class="welcome-content">
+          <div class="welcome-badge">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="5"/></svg>
+            Plataforma activa
+          </div>
+
+          <h2 class="welcome-title">
+            Bienvenido a<br/>
+            <span class="gradient-text">HabboBots</span>
+          </h2>
+
+          <p class="welcome-desc">
+            La plataforma más avanzada para automatización dentro del ecosistema Habbo. Gestiona tus bots, compra créditos y domina cualquier hotel.
+          </p>
+
+          <ul class="welcome-features">
+            <li><span class="feature-dot"></span> Bots en múltiples hoteles (es, com, br…)</li>
+            <li><span class="feature-dot"></span> Verificación de cuenta Habbo segura</li>
+            <li><span class="feature-dot"></span> Panel de control en tiempo real</li>
+            <li><span class="feature-dot"></span> Sistema de créditos y pagos integrado</li>
+            <li><span class="feature-dot"></span> Soporte 24/7 vía Discord</li>
+          </ul>
+
+          <div class="welcome-avatars">
+            <div class="avatar-stack">
+              <img src="https://ui-avatars.com/api/?name=A&background=0080ff&color=fff&size=32" alt="user" />
+              <img src="https://ui-avatars.com/api/?name=B&background=9b30ff&color=fff&size=32" alt="user" />
+              <img src="https://ui-avatars.com/api/?name=C&background=00c3ff&color=fff&size=32" alt="user" />
+              <img src="https://ui-avatars.com/api/?name=D&background=6a0fd6&color=fff&size=32" alt="user" />
+            </div>
+            <span class="avatar-count-text">+<strong id="member-count">—</strong> miembros</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script>
+    // Simulated online count (replace with real API call)
+    setTimeout(() => {
+      document.getElementById('online-count').textContent = Math.floor(Math.random() * 300 + 150);
+      document.getElementById('member-count').textContent = '2.4k';
+    }, 600);
+
+    function handleLogin(e) {
+      e.preventDefault();
+      showToast('Iniciando sesión…', 'info');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
+    }
+
+    function handleRegister(e) {
+      e.preventDefault();
+      showToast('Cuenta creada. ¡Bienvenido!', 'success');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+    }
+
+    function loginWithDiscord() {
+      showToast('Redirigiendo a Discord…', 'info');
+      // window.location.href = '/auth/discord';
+    }
+  </script>
+</body>
+</html>

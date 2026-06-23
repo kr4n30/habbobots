@@ -1,0 +1,251 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Estadísticas" activePage="stats">
+  <style>
+    .stats-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.75rem; }
+    .range-btns { display:flex; gap:.25rem; }
+    .range-btn {
+      padding:.3rem .75rem; border-radius:5px; border:2px solid #000;
+      background:rgba(255,255,255,.05); color:var(--text-muted);
+      font-family:'Ubuntu Condensed','Rajdhani',sans-serif; font-size:.82rem;
+      cursor:pointer; transition:.15s;
+    }
+    .range-btn.active { background:linear-gradient(180deg,#2a7fd4,#1a5ba8); color:#fff; }
+
+    .overview-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem; }
+    .ov-card { padding:1.1rem 1.25rem; }
+    .ov-val { font-family:'Orbitron',sans-serif; font-size:1.5rem; font-weight:700; }
+    .ov-lbl { font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.8px; margin-top:.15rem; }
+    .ov-ch  { font-size:.72rem; margin-top:.35rem; }
+    .ov-ch.up   { color:var(--success); }
+    .ov-ch.down { color:var(--danger); }
+
+    /* Chart canvas area */
+    .chart-area {
+      height:200px; position:relative;
+      display:flex; align-items:flex-end; gap:4px;
+      padding: 0 .5rem;
+    }
+    .bar-group { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .bar {
+      width:100%; border-radius:3px 3px 0 0;
+      background:var(--gradient-main);
+      opacity:.8; transition:opacity .2s, height .6s;
+      min-height:4px;
+    }
+    .bar:hover { opacity:1; }
+    .bar-label { font-size:.65rem; color:var(--text-muted); margin-top:4px; }
+
+    .chart-grid {
+      position:absolute; inset:0; pointer-events:none;
+      display:flex; flex-direction:column; justify-content:space-between;
+    }
+    .chart-grid-line {
+      width:100%; height:1px;
+      background:rgba(255,255,255,.04);
+      position:relative;
+    }
+    .chart-grid-line::before {
+      content:attr(data-val);
+      position:absolute; left:0; top:-8px;
+      font-size:.6rem; color:var(--text-muted);
+    }
+
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+    .bot-perf-row { display:flex; align-items:center; gap:.75rem; padding:.6rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
+    .bot-perf-row:last-child { border-bottom:none; }
+    .bot-perf-name { flex:1; font-size:.86rem; }
+    .bot-perf-bar { width:80px; }
+    .bot-perf-val { font-family:'Orbitron',sans-serif; font-size:.8rem; font-weight:700; min-width:42px; text-align:right; }
+
+    @media (max-width:900px) { .overview-row { grid-template-columns:repeat(2,1fr); } .two-col { grid-template-columns:1fr; } }
+    @media (max-width:600px) { .overview-row { grid-template-columns:repeat(2,1fr); } }
+  </style>
+
+  <div class="stats-header">
+    <div>
+      <h1 style="font-family:'Orbitron',sans-serif;font-size:1.25rem;font-weight:700;">Estadísticas</h1>
+      <p style="color:var(--text-muted);font-size:.86rem;margin-top:.2rem;">Rendimiento de tus bots y actividad de la cuenta</p>
+    </div>
+    <div class="range-btns">
+      <button class="range-btn" onclick="setRange(this,'7d')">7d</button>
+      <button class="range-btn active" onclick="setRange(this,'30d')">30d</button>
+      <button class="range-btn" onclick="setRange(this,'90d')">90d</button>
+    </div>
+  </div>
+
+  <!-- Overview cards -->
+  <div class="overview-row">
+    <div class="hb-window ov-card">
+      <div class="ov-val neon-blue">847</div>
+      <div class="ov-lbl">Acciones totales</div>
+      <div class="ov-ch up">▲ +12% vs mes anterior</div>
+    </div>
+    <div class="hb-window ov-card">
+      <div class="ov-val" style="color:var(--success);">98.4%</div>
+      <div class="ov-lbl">Uptime promedio</div>
+      <div class="ov-ch up">▲ Excelente</div>
+    </div>
+    <div class="hb-window ov-card">
+      <div class="ov-val neon-purple">2,740</div>
+      <div class="ov-lbl">Créditos usados</div>
+      <div class="ov-ch down">▼ -5% vs mes anterior</div>
+    </div>
+    <div class="hb-window ov-card">
+      <div class="ov-val" style="color:var(--warning);">3</div>
+      <div class="ov-lbl">Bots activos</div>
+      <div class="ov-ch up">▲ +1 nuevo</div>
+    </div>
+  </div>
+
+  <!-- Activity chart -->
+  <div class="hb-window" style="margin-bottom:1.5rem;">
+    <div class="hb-window-title"><h3>Actividad diaria (últimos 30 días)</h3></div>
+    <div class="hb-window-body">
+      <div style="position:relative;">
+        <div class="chart-grid">
+          <div class="chart-grid-line" data-val="100"></div>
+          <div class="chart-grid-line" data-val="75"></div>
+          <div class="chart-grid-line" data-val="50"></div>
+          <div class="chart-grid-line" data-val="25"></div>
+          <div class="chart-grid-line" data-val="0"></div>
+        </div>
+        <div class="chart-area" id="activity-chart">
+          <!-- Bars generated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-column stats -->
+  <div class="two-col">
+
+    <!-- Bot performance -->
+    <div class="hb-window">
+      <div class="hb-window-title"><h3>Rendimiento por bot</h3></div>
+      <div class="hb-window-body">
+        <div class="bot-perf-row">
+          <div class="bot-perf-name">HabboBot_Alpha</div>
+          <div class="bot-perf-bar"><div class="progress-bar"><div class="progress-fill" style="width:99%;"></div></div></div>
+          <div class="bot-perf-val neon-blue">99.1%</div>
+        </div>
+        <div class="bot-perf-row">
+          <div class="bot-perf-name">TradeBot_ES</div>
+          <div class="bot-perf-bar"><div class="progress-bar"><div class="progress-fill" style="width:98%;background:linear-gradient(90deg,var(--purple-primary),var(--purple-secondary));"></div></div></div>
+          <div class="bot-perf-val neon-purple">97.8%</div>
+        </div>
+        <div class="bot-perf-row">
+          <div class="bot-perf-name">FarmBot_COM</div>
+          <div class="bot-perf-bar"><div class="progress-bar"><div class="progress-fill" style="width:95%;background:linear-gradient(90deg,var(--warning),#b08800);"></div></div></div>
+          <div class="bot-perf-val" style="color:var(--warning);">95.2%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credit usage -->
+    <div class="hb-window">
+      <div class="hb-window-title" style="background:linear-gradient(90deg,#1a0650,#0a2a6e);">
+        <h3>Uso de créditos</h3>
+      </div>
+      <div class="hb-window-body">
+        <div style="margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.35rem;">
+            <span style="color:var(--text-secondary);">Bots (3 × 60 créditos)</span>
+            <span class="neon-purple">180/mes</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:45%;background:linear-gradient(90deg,var(--purple-primary),var(--purple-secondary));"></div></div>
+        </div>
+        <div style="margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.35rem;">
+            <span style="color:var(--text-secondary);">Acciones extra</span>
+            <span class="neon-blue">60/mes</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:20%;"></div></div>
+        </div>
+        <div style="padding:.75rem;background:rgba(0,0,0,.3);border-radius:7px;border:1px solid rgba(255,255,255,.05);">
+          <div style="display:flex;justify-content:space-between;font-size:.82rem;">
+            <span style="color:var(--text-muted);">Total gastado este mes</span>
+            <span style="font-family:'Orbitron',sans-serif;font-weight:700;color:var(--warning);">240 créditos</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-top:.4rem;">
+            <span style="color:var(--text-muted);">Saldo restante</span>
+            <span style="font-family:'Orbitron',sans-serif;font-weight:700;" class="neon-blue">1,240 créditos</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script is:inline slot="scripts">
+    const DAY_LABELS = ['L','M','X','J','V','S','D'];
+
+    // ── Render bar chart ───────────────────────────
+    function renderChart(rawData) {
+      const chart = document.getElementById('activity-chart');
+      // rawData can be array of numbers OR array of {day, total} objects
+      const values = rawData.map(d => typeof d === 'number' ? d : (d.total || 0));
+      const max = Math.max(...values, 1);
+      chart.innerHTML = '';
+      values.forEach((val, i) => {
+        const group = document.createElement('div');
+        group.className = 'bar-group';
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.height = (val / max * 180) + 'px';
+        bar.title = `${val} acciones`;
+        const lbl = document.createElement('div');
+        lbl.className = 'bar-label';
+        lbl.textContent = i % Math.ceil(values.length / 7) === 0 ? DAY_LABELS[i % 7] : '';
+        group.appendChild(bar);
+        group.appendChild(lbl);
+        chart.appendChild(group);
+      });
+    }
+
+    // ── Load activity from API ─────────────────────
+    async function loadActivity(days) {
+      try {
+        const res = await StatsAPI.activity(days);
+        // If API returns sparse data, fill gaps with 0s
+        if (res.activity && res.activity.length > 0) {
+          // Pad to requested number of days
+          const sparse = res.activity;
+          const padded = Array.from({ length: days }, (_, i) => {
+            const d = sparse[sparse.length - days + i];
+            return d ? d.total : 0;
+          });
+          renderChart(padded);
+        } else {
+          // No data yet — show empty chart
+          renderChart(Array(days).fill(0));
+        }
+      } catch {
+        // Fallback to random demo data
+        renderChart(Array.from({ length: days }, () => Math.floor(Math.random() * 90) + 10));
+      }
+    }
+
+    // ── Load overview stats ────────────────────────
+    (async () => {
+      try {
+        const stats = await StatsAPI.overview();
+        const ovCards = document.querySelectorAll('.ov-val');
+        if (ovCards[0]) ovCards[0].textContent = stats.transactions || 0;
+        if (ovCards[2]) ovCards[2].textContent = (stats.credits.totalSpent || 0).toLocaleString();
+        if (ovCards[3]) ovCards[3].textContent = stats.bots.total || 0;
+      } catch {}
+    })();
+
+    function setRange(btn, range) {
+      document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const days = range === '7d' ? 7 : range === '90d' ? 90 : 30;
+      loadActivity(days);
+    }
+
+    // ── Init ───────────────────────────────────────
+    loadActivity(30);
+  </script>
+</DashLayout>

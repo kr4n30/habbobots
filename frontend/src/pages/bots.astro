@@ -1,0 +1,318 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Gestión de Bots" activePage="bots">
+  <style>
+    .bots-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.75rem; }
+    .bots-header h1 { font-family:'Orbitron',sans-serif; font-size:1.25rem; font-weight:700; }
+    .bots-header p { color:var(--text-muted); font-size:.86rem; margin-top:.2rem; }
+
+    .bots-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1.25rem; margin-bottom:1.5rem; }
+
+    .bot-card { display:flex; flex-direction:column; }
+    .bot-card-title { display:flex; align-items:center; gap:.5rem; padding:.45rem .85rem; border-bottom:2px solid #000; }
+    .bot-card-title h3 { flex:1; font-family:'Ubuntu Condensed','Orbitron',sans-serif; font-size:.9rem; font-weight:400; color:#fff; text-shadow:1px 1px 1px #000; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .bot-status-pill { font-size:.68rem; font-weight:700; padding:.15rem .5rem; border-radius:4px; border:1px solid; }
+    .status-online  { background:rgba(0,255,163,.1); color:var(--success); border-color:rgba(0,255,163,.3); }
+    .status-offline { background:rgba(100,100,100,.1); color:var(--text-muted); border-color:rgba(100,100,100,.3); }
+    .status-busy    { background:rgba(255,190,0,.1); color:var(--warning); border-color:rgba(255,190,0,.3); }
+
+    .bot-card-body { padding:1rem 1.1rem; flex:1; }
+
+    .bot-big-avatar {
+      display:flex; align-items:center; gap:1rem; margin-bottom:1rem;
+      padding-bottom:1rem; border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .bot-big-av {
+      width:60px; height:70px; flex-shrink:0;
+      display:flex; align-items:flex-end; justify-content:center;
+      background:rgba(0,195,255,.05); border-radius:10px;
+      border:1px solid var(--border-glow); overflow:hidden;
+      position:relative;
+    }
+    .bot-big-info { flex:1; }
+    .bot-big-name { font-weight:700; font-size:.95rem; }
+    .bot-big-hotel { font-size:.76rem; color:var(--text-muted); margin-top:.15rem; }
+    .bot-big-room { font-size:.76rem; color:var(--blue-primary); margin-top:.1rem; }
+
+    .bot-stats-row { display:flex; gap:.5rem; margin-bottom:1rem; }
+    .bot-mini-stat { flex:1; text-align:center; padding:.5rem; background:rgba(0,0,0,.3); border-radius:7px; border:1px solid rgba(255,255,255,.05); }
+    .bot-mini-val { font-family:'Orbitron',sans-serif; font-size:.9rem; font-weight:700; }
+    .bot-mini-lbl { font-size:.62rem; color:var(--text-muted); text-transform:uppercase; margin-top:.1rem; }
+
+    .bot-actions-row { display:flex; gap:.5rem; }
+
+    /* New bot form */
+    .hotel-select-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; margin-bottom:1rem; }
+    .hotel-opt {
+      display:flex; flex-direction:column; align-items:center; gap:.35rem;
+      padding:.75rem .5rem; cursor:pointer;
+      border-radius:8px; font-size:.78rem; font-weight:600;
+      text-align:center; color:var(--text-muted);
+      transition:all .2s;
+    }
+    .hotel-opt.selected { border-color:var(--blue-primary) !important; color:var(--blue-primary); background:rgba(0,195,255,.07); }
+    .hotel-opt:hover { border-color:rgba(0,195,255,.4); color:var(--text-primary); }
+    .hotel-flag { font-size:1.4rem; }
+
+    @media (max-width:768px) { .bot-stats-row { flex-wrap:wrap; } }
+  </style>
+
+  <div class="bots-header">
+    <div>
+      <h1>Gestión de Bots</h1>
+      <p>Controla, configura y despliega tus bots en cualquier hotel</p>
+    </div>
+    <button class="hb-btn hb-btn-purple" onclick="document.getElementById('new-bot-modal').classList.remove('hidden')">
+      + Contratar bot
+    </button>
+  </div>
+
+  <!-- Active bots grid — populated by JS via BotsAPI.list() -->
+  <div class="bots-grid" id="bots-grid">
+    <!-- Loading placeholder -->
+    <div style="grid-column:1/-1;padding:2rem;text-align:center;color:var(--text-muted);font-size:.86rem;">
+      Cargando bots…
+    </div>
+  </div>
+
+  <!-- Logs window -->
+  <div class="hb-window" id="logs-window" style="display:none;margin-bottom:1.5rem;">
+    <div class="hb-window-title">
+      <h3 id="logs-title">📋 Logs — HabboBot_Alpha</h3>
+      <span class="hb-close" onclick="document.getElementById('logs-window').style.display='none'">✕</span>
+    </div>
+    <div class="hb-window-body" style="font-family:monospace;font-size:.78rem;max-height:200px;overflow-y:auto;">
+      <div style="color:var(--success);">[14:32:01] Conectado a habbo.es con éxito</div>
+      <div style="color:var(--text-secondary);">[14:32:05] Entrando a sala: La Terraza VIP</div>
+      <div style="color:var(--blue-primary);">[14:35:12] Acción ejecutada: wave</div>
+      <div style="color:var(--text-secondary);">[14:40:00] Idle — esperando comandos</div>
+      <div style="color:var(--warning);">[15:01:44] Advertencia: hotel tardó en responder (1.2s)</div>
+      <div style="color:var(--success);">[15:01:45] Reconexión exitosa</div>
+      <div style="color:var(--text-secondary);">[16:20:00] Alive ping enviado</div>
+    </div>
+  </div>
+
+  <!-- New bot modal -->
+  <div class="hb-overlay hidden" id="new-bot-modal">
+    <div class="hb-alert hb-alert-purple" style="max-width:500px;">
+      <div class="hb-window-title">
+        <h3>🤖 Contratar nuevo bot</h3>
+        <span class="hb-close" onclick="document.getElementById('new-bot-modal').classList.add('hidden')">✕</span>
+      </div>
+      <div class="hb-alert-body">
+        <div class="form-group">
+          <label class="form-label">Nombre del bot</label>
+          <input type="text" id="new-bot-name" class="form-input" placeholder="MiBot_ES" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="margin-bottom:.6rem;">Hotel</label>
+          <div class="hotel-select-grid">
+            <div class="hb-window hotel-opt selected" id="hotel-es" onclick="selectHotel('es')">
+              <div class="hotel-flag">🇪🇸</div>habbo.es
+            </div>
+            <div class="hb-window hotel-opt" id="hotel-com" onclick="selectHotel('com')">
+              <div class="hotel-flag">🌐</div>habbo.com
+            </div>
+            <div class="hb-window hotel-opt" id="hotel-br" onclick="selectHotel('br')">
+              <div class="hotel-flag">🇧🇷</div>habbo.com.br
+            </div>
+            <div class="hb-window hotel-opt" id="hotel-de" onclick="selectHotel('de')">
+              <div class="hotel-flag">🇩🇪</div>habbo.de
+            </div>
+            <div class="hb-window hotel-opt" id="hotel-fi" onclick="selectHotel('fi')">
+              <div class="hotel-flag">🇫🇮</div>habbo.fi
+            </div>
+            <div class="hb-window hotel-opt" id="hotel-it" onclick="selectHotel('it')">
+              <div class="hotel-flag">🇮🇹</div>habbo.it
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sala inicial (opcional)</label>
+          <input type="text" id="new-bot-room" class="form-input" placeholder="Nombre de la sala" />
+        </div>
+        <div style="padding:.7rem;background:rgba(155,48,255,.08);border:1px solid rgba(155,48,255,.2);border-radius:6px;font-size:.8rem;color:var(--text-muted);">
+          💎 Coste: <strong style="color:var(--purple-primary);">60 créditos/mes</strong> · Saldo actual: 1,240 créditos
+        </div>
+      </div>
+      <div class="hb-alert-footer">
+        <button class="hb-btn hb-btn-ghost" onclick="document.getElementById('new-bot-modal').classList.add('hidden')">Cancelar</button>
+        <button class="hb-btn hb-btn-purple" onclick="hireBot()">✓ Contratar bot</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirm modal -->
+  <div class="hb-overlay hidden" id="delete-modal">
+    <div class="hb-alert hb-alert-danger">
+      <div class="hb-window-title">
+        <h3>⚠ Eliminar bot</h3>
+        <span class="hb-close" onclick="document.getElementById('delete-modal').classList.add('hidden')">✕</span>
+      </div>
+      <div class="hb-alert-body">
+        <p>¿Seguro que quieres eliminar <strong id="delete-bot-name">este bot</strong>? Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="hb-alert-footer">
+        <button class="hb-btn hb-btn-ghost" onclick="document.getElementById('delete-modal').classList.add('hidden')">Cancelar</button>
+        <button class="hb-btn hb-btn-danger" onclick="deleteBot()">🗑 Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline slot="scripts">
+    let selectedHotel = 'es';
+    let pendingDeleteId = null;
+
+    // ── Hotel selector ─────────────────────────────
+    function selectHotel(h) {
+      selectedHotel = h;
+      document.querySelectorAll('.hotel-opt').forEach(el => el.classList.remove('selected'));
+      document.getElementById('hotel-' + h).classList.add('selected');
+    }
+
+    // ── Render a single bot card ───────────────────
+    function renderBotCard(bot) {
+      const online = bot.status === 'online';
+      const busy   = bot.status === 'busy';
+      const scls   = online ? 'status-online' : busy ? 'status-busy' : 'status-offline';
+      const slbl   = online ? '● Online' : busy ? '● Ocupado' : '● Offline';
+      const barBg  = online ? 'linear-gradient(90deg,#0a3a6e,#0a1640)'
+                   : busy   ? 'linear-gradient(90deg,#3a2a00,#1a1200)'
+                   :          'linear-gradient(90deg,#1a1a2e,#0a0a1a)';
+      const uptime = bot.uptime_pct != null ? bot.uptime_pct.toFixed(1) + '%' : '--';
+      const days   = bot.created_at
+        ? Math.floor((Date.now() - new Date(bot.created_at)) / 86400000) + 'd'
+        : '--';
+      const nameSafe = bot.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      const actionBtn = (online || busy)
+        ? `<button class="hb-btn hb-btn-danger" style="flex:1;" onclick="stopBot('${bot.id}')">⏹ Parar</button>`
+        : `<button class="hb-btn" style="flex:1;" onclick="startBot('${bot.id}')">▶ Iniciar</button>`;
+
+      return `
+      <div class="hb-window bot-card">
+        <div class="bot-card-title" style="background:${barBg};">
+          <h3>${bot.name}</h3>
+          <span class="bot-status-pill ${scls}">${slbl}</span>
+          <span class="hb-close" onclick="confirmDeleteBot('${bot.id}','${nameSafe}')">✕</span>
+        </div>
+        <div class="bot-card-body">
+          <div class="bot-big-avatar">
+            <div class="bot-big-av">
+              <img src="https://sandbox.habbo.com/habbo-imaging/avatarimage?figure=hd-180-1369.ch-210-1408.lg-4315&direction=3&head_direction=3&gesture=nrm&size=m"
+                   style="height:64px;" alt="bot" onerror="this.style.display='none'" />
+            </div>
+            <div class="bot-big-info">
+              <div class="bot-big-name">${bot.name}</div>
+              <div class="bot-big-hotel">🌐 habbo.${bot.hotel || 'es'}</div>
+              <div class="bot-big-room">📍 ${bot.room || 'Sin sala asignada'}</div>
+            </div>
+          </div>
+          <div class="bot-stats-row">
+            <div class="bot-mini-stat"><div class="bot-mini-val neon-blue">${uptime}</div><div class="bot-mini-lbl">Uptime</div></div>
+            <div class="bot-mini-stat"><div class="bot-mini-val" style="color:var(--success);">${days}</div><div class="bot-mini-lbl">Activo</div></div>
+            <div class="bot-mini-stat"><div class="bot-mini-val neon-purple">${bot.actions || 0}</div><div class="bot-mini-lbl">Acciones</div></div>
+          </div>
+          <div class="bot-actions-row">
+            ${actionBtn}
+            <button class="hb-btn" style="flex:1;" onclick="configBot('${bot.id}')">⚙ Config</button>
+            <button class="hb-btn hb-btn-ghost" onclick="showLogs('${nameSafe}')">📋 Logs</button>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    const ADD_CARD = `
+      <div class="hb-window bot-card" style="cursor:pointer;border-style:dashed;opacity:.7;transition:opacity .2s;"
+           onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.7'"
+           onclick="document.getElementById('new-bot-modal').classList.remove('hidden')">
+        <div class="bot-card-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;gap:1rem;text-align:center;">
+          <div style="width:56px;height:56px;border-radius:50%;background:rgba(0,195,255,.08);border:2px dashed rgba(0,195,255,.3);display:flex;align-items:center;justify-content:center;font-size:1.5rem;">+</div>
+          <div>
+            <div style="font-weight:600;color:var(--text-secondary);">Contratar nuevo bot</div>
+            <div style="font-size:.78rem;color:var(--text-muted);margin-top:.25rem;">60 créditos/mes</div>
+          </div>
+        </div>
+      </div>`;
+
+    // ── Load & render all bots ─────────────────────
+    async function loadBots() {
+      const grid = document.getElementById('bots-grid');
+      try {
+        const { bots } = await BotsAPI.list();
+        grid.innerHTML = (bots.length ? bots.map(renderBotCard).join('') : '') + ADD_CARD;
+      } catch (err) {
+        if (err.status === 401) { AuthAPI.logout(); return; }
+        grid.innerHTML = `<div style="color:var(--danger);padding:1rem;font-size:.86rem;">Error: ${err.message}</div>` + ADD_CARD;
+      }
+    }
+
+    // ── Actions ────────────────────────────────────
+    async function hireBot() {
+      const name = (document.getElementById('new-bot-name').value || 'NuevoBot').trim();
+      const room = (document.getElementById('new-bot-room').value || '').trim();
+      try {
+        await BotsAPI.create(name, selectedHotel, room);
+        document.getElementById('new-bot-modal').classList.add('hidden');
+        document.getElementById('new-bot-name').value = '';
+        document.getElementById('new-bot-room').value = '';
+        showToast(`Bot "${name}" contratado en habbo.${selectedHotel}`, 'success');
+        loadBots();
+      } catch (err) {
+        showToast(err.message || 'Error al contratar bot', 'danger');
+      }
+    }
+
+    async function stopBot(id) {
+      try {
+        await BotsAPI.stop(id);
+        showToast('Bot detenido', 'warning');
+        loadBots();
+      } catch (err) {
+        showToast(err.message || 'Error al detener', 'danger');
+      }
+    }
+
+    async function startBot(id) {
+      try {
+        await BotsAPI.start(id);
+        showToast('Bot iniciando…', 'success');
+        loadBots();
+      } catch (err) {
+        showToast(err.message || 'Error al iniciar', 'danger');
+      }
+    }
+
+    function configBot(id) {
+      showToast('Configuración avanzada — próximamente', 'info');
+    }
+
+    function showLogs(name) {
+      document.getElementById('logs-title').textContent = `📋 Logs — ${name}`;
+      document.getElementById('logs-window').style.display = 'block';
+      document.getElementById('logs-window').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function confirmDeleteBot(id, name) {
+      pendingDeleteId = id;
+      document.getElementById('delete-bot-name').textContent = name;
+      document.getElementById('delete-modal').classList.remove('hidden');
+    }
+
+    async function deleteBot() {
+      if (!pendingDeleteId) return;
+      try {
+        await BotsAPI.delete(pendingDeleteId);
+        document.getElementById('delete-modal').classList.add('hidden');
+        showToast('Bot eliminado', 'success');
+        pendingDeleteId = null;
+        loadBots();
+      } catch (err) {
+        showToast(err.message || 'Error al eliminar', 'danger');
+      }
+    }
+
+    // ── Init ───────────────────────────────────────
+    loadBots();
+  </script>
+</DashLayout>

@@ -1,0 +1,295 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Verificar Habbo" activePage="verificar">
+  <style>
+    .verify-layout { display:grid; grid-template-columns:1fr 340px; gap:1.5rem; }
+    .step-number {
+      width:32px; height:32px; border-radius:50%;
+      background:var(--gradient-main); color:#fff;
+      font-family:'Orbitron',sans-serif; font-size:.8rem; font-weight:700;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .step-row { display:flex; align-items:flex-start; gap:1rem; padding:1rem 0; border-bottom:1px solid rgba(255,255,255,.05); }
+    .step-row:last-child { border-bottom:none; }
+    .step-content { flex:1; }
+    .step-title { font-weight:700; font-size:.95rem; margin-bottom:.3rem; }
+    .step-desc { font-size:.84rem; color:var(--text-secondary); line-height:1.55; }
+
+    .hotel-chips { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; }
+    .hotel-chip {
+      display:flex; align-items:center; gap:.35rem;
+      padding:.35rem .8rem; border-radius:6px; border:2px solid #000;
+      background:rgba(10,18,40,.9); font-size:.82rem; font-weight:600;
+      cursor:pointer; transition:.15s; color:var(--text-secondary);
+    }
+    .hotel-chip.selected { background:linear-gradient(180deg,#2a7fd4,#1a5ba8); color:#fff; box-shadow:0 0 10px rgba(0,195,255,.3); }
+
+    .code-display {
+      font-family:'Orbitron',sans-serif; font-size:1.1rem;
+      padding:.75rem 1rem; text-align:center;
+      background:rgba(0,0,0,.4); border:1px dashed rgba(0,195,255,.5);
+      border-radius:6px; color:var(--blue-primary); letter-spacing:3px;
+      cursor:pointer; transition:border-color .2s;
+      user-select:all;
+    }
+    .code-display:hover { border-color:var(--blue-primary); box-shadow:0 0 10px rgba(0,195,255,.2); }
+
+    .verify-status {
+      display:flex; align-items:center; gap:.75rem;
+      padding:1rem 1.25rem; border-radius:8px; border:2px solid #000;
+      font-size:.86rem;
+    }
+    .verify-status.pending { background:rgba(255,190,0,.08); border-color:#000; }
+    .verify-status.checking { background:rgba(0,195,255,.08); border-color:#000; }
+    .verify-status.success { background:rgba(0,255,163,.08); border-color:#000; }
+    .verify-status.error   { background:rgba(255,51,102,.08); border-color:#000; }
+
+    .verified-hotels-list { list-style:none; display:flex; flex-direction:column; gap:.5rem; }
+    .verified-hotel-item {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:.6rem .85rem; background:rgba(0,0,0,.3);
+      border-radius:7px; border:1px solid rgba(255,255,255,.05);
+      font-size:.84rem;
+    }
+
+    @media (max-width:900px) { .verify-layout { grid-template-columns:1fr; } }
+  </style>
+
+  <div style="margin-bottom:1.75rem;">
+    <h1 style="font-family:'Orbitron',sans-serif;font-size:1.25rem;font-weight:700;">Verificar cuenta Habbo</h1>
+    <p style="color:var(--text-muted);font-size:.86rem;margin-top:.2rem;">Vincula tu perfil de Habbo para activar los bots</p>
+  </div>
+
+  <div class="verify-layout">
+
+    <!-- Main verification -->
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+      <div class="hb-window">
+        <div class="hb-window-title"><h3>🛡 Verificación por Motto</h3></div>
+        <div class="hb-window-body">
+
+          <!-- Step 1: Select hotel -->
+          <div class="step-row">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <div class="step-title">Selecciona tu hotel</div>
+              <div class="step-desc">¿En qué hotel quieres verificar tu cuenta?</div>
+              <div class="hotel-chips">
+                <div class="hotel-chip selected" id="h-es"  onclick="selectHotel('es')">🇪🇸 habbo.es</div>
+                <div class="hotel-chip" id="h-com" onclick="selectHotel('com')">🌐 habbo.com</div>
+                <div class="hotel-chip" id="h-br"  onclick="selectHotel('br')">🇧🇷 habbo.com.br</div>
+                <div class="hotel-chip" id="h-de"  onclick="selectHotel('de')">🇩🇪 habbo.de</div>
+                <div class="hotel-chip" id="h-fi"  onclick="selectHotel('fi')">🇫🇮 habbo.fi</div>
+                <div class="hotel-chip" id="h-it"  onclick="selectHotel('it')">🇮🇹 habbo.it</div>
+                <div class="hotel-chip" id="h-nl"  onclick="selectHotel('nl')">🇳🇱 habbo.nl</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Username -->
+          <div class="step-row">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <div class="step-title">Tu nombre de usuario en Habbo</div>
+              <div class="step-desc" style="margin-bottom:.75rem;">Introduce el nombre de tu personaje en el hotel seleccionado.</div>
+              <div style="display:flex;gap:.75rem;align-items:flex-end;">
+                <div class="form-group" style="flex:1;margin:0;">
+                  <input type="text" id="habbo-username" class="form-input" placeholder="HabboRafa98" oninput="onUsernameInput(this.value)" />
+                </div>
+                <div id="habbo-avatar-preview" style="width:60px;height:70px;background:rgba(0,195,255,.05);border:1px solid var(--border-glow);border-radius:8px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;flex-shrink:0;">
+                  <span style="font-size:1.5rem;padding-bottom:4px;">👤</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Code -->
+          <div class="step-row">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <div class="step-title">Copia este código y ponlo como tu Motto</div>
+              <div class="step-desc" style="margin-bottom:.75rem;">Entra a Habbo, ve a tu perfil y cambia el motto a este código exacto:</div>
+              <div class="code-display" id="verify-code" onclick="copyCode()" title="Clic para copiar">HB-VERIFY-K9X4M2</div>
+              <div style="display:flex;justify-content:space-between;margin-top:.35rem;">
+                <span style="font-size:.72rem;color:var(--text-muted);">Clic para copiar · Caduca en <span id="countdown">09:59</span></span>
+                <button onclick="regenerateCode()" style="background:none;border:none;color:var(--blue-primary);font-size:.72rem;cursor:pointer;">Generar nuevo</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4: Verify -->
+          <div class="step-row">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <div class="step-title">Verifica automáticamente</div>
+              <div class="step-desc" style="margin-bottom:.85rem;">Una vez cambiado el motto, pulsa el botón. Comprobamos la API de Habbo en tiempo real.</div>
+
+              <div class="verify-status pending" id="verify-status-box">
+                <span style="font-size:1.2rem;">⏳</span>
+                <div>
+                  <div style="font-weight:600;">Pendiente</div>
+                  <div style="font-size:.78rem;color:var(--text-muted);">Cambia el motto y pulsa verificar</div>
+                </div>
+              </div>
+
+              <button class="hb-btn hb-btn-purple" onclick="runVerification()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.85rem;" id="verify-btn">
+                🔍 Verificar ahora
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: verified accounts -->
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+      <div class="hb-window">
+        <div class="hb-window-title" style="background:linear-gradient(90deg,#0a4a1e,#061a0e);">
+          <h3>✓ Cuentas verificadas</h3>
+        </div>
+        <div class="hb-window-body">
+          <ul class="verified-hotels-list">
+            <li class="verified-hotel-item">
+              <div>
+                <div style="font-weight:600;font-size:.86rem;">🇪🇸 habbo.es</div>
+                <div style="font-size:.74rem;color:var(--text-muted);">HabboRafa98</div>
+              </div>
+              <span class="badge badge-success">✓ Verificado</span>
+            </li>
+          </ul>
+          <div style="margin-top:.85rem;padding:.65rem;background:rgba(0,0,0,.3);border-radius:7px;font-size:.78rem;color:var(--text-muted);">
+            💡 Puedes verificar múltiples hoteles. Cada verificación vincula un usuario distinto.
+          </div>
+        </div>
+      </div>
+
+      <div class="hb-window">
+        <div class="hb-window-title"><h3>ℹ ¿Para qué sirve?</h3></div>
+        <div class="hb-window-body" style="font-size:.84rem;color:var(--text-secondary);line-height:1.6;">
+          <p style="margin-bottom:.75rem;">La verificación demuestra que eres el dueño legítimo de la cuenta Habbo que quieres usar con los bots.</p>
+          <p>Sin verificación, los bots no pueden operar en tu nombre dentro de los hoteles para evitar usos fraudulentos.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script is:inline slot="scripts">
+    let selectedHotelVerify = 'es';
+    let countdownSecs = 600;
+    let countdownTimer;
+
+    function selectHotel(h) {
+      selectedHotelVerify = h;
+      document.querySelectorAll('.hotel-chip').forEach(el => el.classList.remove('selected'));
+      document.getElementById('h-' + h).classList.add('selected');
+      regenerateCode();
+    }
+
+    function generateCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = 'HB-VERIFY-';
+      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      return code;
+    }
+
+    async function regenerateCode() {
+      try {
+        const res = await HabboAPI.requestVerify(selectedHotelVerify);
+        document.getElementById('verify-code').textContent = res.token || generateCode();
+        showToast('Nuevo código generado', 'info');
+      } catch {
+        // Fallback a código local si el backend no responde
+        document.getElementById('verify-code').textContent = generateCode();
+      }
+      countdownSecs = 600;
+      clearInterval(countdownTimer);
+      startCountdown();
+    }
+
+    function startCountdown() {
+      countdownTimer = setInterval(() => {
+        countdownSecs--;
+        const m = String(Math.floor(countdownSecs / 60)).padStart(2,'0');
+        const s = String(countdownSecs % 60).padStart(2,'0');
+        const el = document.getElementById('countdown');
+        if (el) el.textContent = `${m}:${s}`;
+        if (countdownSecs <= 0) { clearInterval(countdownTimer); regenerateCode(); }
+      }, 1000);
+    }
+
+    function copyCode() {
+      const code = document.getElementById('verify-code').textContent;
+      copyToClipboard(code);
+    }
+
+    function onUsernameInput(val) {
+      const preview = document.getElementById('habbo-avatar-preview');
+      if (val.length >= 3) {
+        const hotel = selectedHotelVerify === 'com' ? 'com' : selectedHotelVerify;
+        preview.innerHTML = `<img src="https://sandbox.habbo.com/habbo-imaging/avatarimage?user=${encodeURIComponent(val)}&direction=3&head_direction=3&gesture=nrm&size=m" style="height:64px;" onerror="this.parentElement.innerHTML='<span style=font-size:1.5rem;padding-bottom:4px>👤</span>'" />`;
+      }
+    }
+
+    async function runVerification() {
+      const username = document.getElementById('habbo-username').value.trim();
+      if (!username) { showToast('Introduce tu usuario de Habbo', 'warning'); return; }
+
+      const box = document.getElementById('verify-status-box');
+      const btn = document.getElementById('verify-btn');
+      box.className = 'verify-status checking';
+      box.innerHTML = '<span style="font-size:1.2rem;">🔍</span><div><div style="font-weight:600;">Verificando…</div><div style="font-size:.78rem;color:var(--text-muted);">Consultando API de Habbo</div></div>';
+      btn.disabled = true;
+      btn.style.opacity = '.6';
+
+      try {
+        await HabboAPI.checkVerify(username, selectedHotelVerify);
+        box.className = 'verify-status success';
+        box.innerHTML = `<span style="font-size:1.2rem;">✅</span><div><div style="font-weight:600;color:var(--success);">¡Verificado!</div><div style="font-size:.78rem;color:var(--text-muted);">${username} vinculado en habbo.${selectedHotelVerify}</div></div>`;
+        showToast('Cuenta verificada correctamente', 'success');
+        loadVerifiedAccounts();
+      } catch (err) {
+        box.className = 'verify-status error';
+        box.innerHTML = `<span style="font-size:1.2rem;">❌</span><div><div style="font-weight:600;color:var(--danger);">Verificación fallida</div><div style="font-size:.78rem;color:var(--text-muted);">${err.message || '¿Cambiaste el motto?'}</div></div>`;
+        showToast(err.message || 'El motto no coincide. Inténtalo de nuevo.', 'danger');
+      } finally {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+    }
+
+    async function loadVerifiedAccounts() {
+      try {
+        const { accounts } = await HabboAPI.accounts();
+        const list = document.querySelector('.verified-hotels-list');
+        if (list && accounts.length > 0) {
+          list.innerHTML = accounts.map(a => `
+            <li class="verified-hotel-item">
+              <div>
+                <div style="font-weight:600;font-size:.86rem;">🌐 habbo.${a.hotel}</div>
+                <div style="font-size:.74rem;color:var(--text-muted);">${a.habbo_name}</div>
+              </div>
+              <span class="badge badge-success">✓ Verificado</span>
+            </li>
+          `).join('');
+        }
+      } catch {}
+    }
+
+    // ── Init ───────────────────────────────────────
+    // Solicitar código real al cargar
+    (async () => {
+      try {
+        const res = await HabboAPI.requestVerify(selectedHotelVerify);
+        if (res.token) document.getElementById('verify-code').textContent = res.token;
+      } catch {}
+    })();
+
+    loadVerifiedAccounts();
+    startCountdown();
+  </script>
+</DashLayout>

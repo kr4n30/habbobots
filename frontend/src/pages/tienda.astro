@@ -1,0 +1,279 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Tienda de Créditos" activePage="tienda">
+  <style>
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .plan-card {
+      display: flex; flex-direction: column;
+      transition: transform .2s;
+    }
+    .plan-card:hover { transform: translateY(-3px); }
+    .plan-card.featured {
+      border-color: var(--purple-primary) !important;
+      box-shadow: 0 0 24px rgba(155,48,255,.25);
+    }
+
+    .plan-titlebar {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .45rem .85rem;
+      border-bottom: 2px solid #000;
+    }
+    .plan-titlebar h3 { flex:1; font-family:'Ubuntu Condensed','Orbitron',sans-serif; font-size:.95rem; font-weight:400; color:#fff; text-shadow:1px 1px 1px #000; margin:0; }
+
+    .plan-body { padding: 1.5rem 1.25rem; flex:1; display:flex; flex-direction:column; }
+    .plan-price { font-family:'Orbitron',sans-serif; font-size:2rem; font-weight:800; line-height:1; margin-bottom:.2rem; }
+    .plan-currency { font-size:.85rem; color:var(--text-muted); margin-left:.25rem; }
+    .plan-credits { font-size:.82rem; color:var(--text-muted); margin-bottom:1rem; }
+    .plan-features { list-style:none; display:flex; flex-direction:column; gap:.45rem; margin-bottom:1.5rem; flex:1; }
+    .plan-features li { display:flex; align-items:center; gap:.5rem; font-size:.84rem; color:var(--text-secondary); }
+    .plan-features li::before { content:'✓'; color:var(--success); font-weight:700; }
+
+    .popular-badge {
+      display:inline-block; padding:.15rem .6rem;
+      background:var(--gradient-main); border-radius:4px;
+      font-size:.65rem; font-weight:700; color:#fff; margin-left:.5rem;
+      text-transform:uppercase; letter-spacing:.5px;
+    }
+
+    /* Payment methods */
+    .payment-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .pay-method {
+      display:flex; align-items:center; gap:1rem;
+      padding:1rem; cursor:pointer;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .pay-method.selected { border-color:var(--blue-primary); box-shadow:var(--shadow-blue); }
+    .pay-icon { width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; flex-shrink:0; background:rgba(255,255,255,.05); }
+    .pay-info { flex:1; }
+    .pay-name { font-weight:600; font-size:.9rem; }
+    .pay-desc { font-size:.76rem; color:var(--text-muted); margin-top:.15rem; }
+    .pay-radio { width:16px; height:16px; border-radius:50%; border:2px solid var(--border-glow); background:transparent; transition:.2s; }
+    .pay-method.selected .pay-radio { background:var(--blue-primary); border-color:var(--blue-primary); }
+
+    /* In-game payment */
+    .ingame-steps { list-style:none; counter-reset:step; }
+    .ingame-steps li { counter-increment:step; display:flex; align-items:flex-start; gap:.75rem; padding:.65rem 0; border-bottom:1px solid rgba(255,255,255,.04); font-size:.84rem; color:var(--text-secondary); }
+    .ingame-steps li:last-child { border-bottom:none; }
+    .ingame-steps li::before { content:counter(step); width:22px; height:22px; border-radius:50%; background:var(--gradient-main); color:#fff; font-size:.72rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:.05rem; }
+
+    @media (max-width:900px) { .plans-grid { grid-template-columns:1fr; } .payment-grid { grid-template-columns:1fr; } }
+    @media (min-width:901px) and (max-width:1200px) { .plans-grid { grid-template-columns:repeat(3,1fr); } }
+  </style>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;">
+    <div>
+      <h1 style="font-family:'Orbitron',sans-serif;font-size:1.25rem;font-weight:700;">Tienda de Créditos</h1>
+      <p style="color:var(--text-muted);font-size:.86rem;margin-top:.2rem;">Elige tu pack y método de pago</p>
+    </div>
+    <div data-credits-badge style="display:flex;align-items:center;gap:.5rem;padding:.4rem .9rem;background:rgba(155,48,255,.12);border:1px solid rgba(155,48,255,.25);border-radius:50px;font-size:.82rem;color:var(--purple-primary);font-weight:600;">
+      💎 Saldo: <strong>—</strong> créditos
+    </div>
+  </div>
+
+  <!-- Plans -->
+  <div class="hb-window" style="margin-bottom:1.5rem;">
+    <div class="hb-window-title"><h3>Packs de créditos</h3></div>
+    <div class="hb-window-body">
+      <div class="plans-grid">
+
+        <!-- Starter -->
+        <div class="hb-window plan-card">
+          <div class="plan-titlebar" style="background:linear-gradient(90deg,#0a3a6e,#0a1a3e);">
+            <h3>💙 Starter</h3>
+          </div>
+          <div class="plan-body">
+            <div class="plan-price neon-blue">€4.99</div>
+            <div class="plan-credits">500 créditos HabboBots</div>
+            <ul class="plan-features">
+              <li>1 bot incluido</li>
+              <li>Hoteles habbo.es / .com</li>
+              <li>Soporte básico</li>
+              <li>Sin caducidad</li>
+            </ul>
+            <button class="hb-btn" onclick="selectPlan('Starter',500,4.99)" style="width:100%;justify-content:center;">Seleccionar</button>
+          </div>
+        </div>
+
+        <!-- Pro (featured) -->
+        <div class="hb-window plan-card featured" style="border-color:var(--purple-primary)!important;">
+          <div class="plan-titlebar" style="background:linear-gradient(90deg,#1a0650,#2a0a8e);">
+            <h3>💜 Pro <span class="popular-badge">Popular</span></h3>
+          </div>
+          <div class="plan-body">
+            <div class="plan-price neon-purple">€9.99</div>
+            <div class="plan-credits">1,200 créditos (+200 bonus)</div>
+            <ul class="plan-features">
+              <li>3 bots simultáneos</li>
+              <li>Todos los hoteles</li>
+              <li>Soporte prioritario</li>
+              <li>Panel de estadísticas</li>
+              <li>Sin caducidad</li>
+            </ul>
+            <button class="hb-btn hb-btn-purple" onclick="selectPlan('Pro',1200,9.99)" style="width:100%;justify-content:center;">Seleccionar</button>
+          </div>
+        </div>
+
+        <!-- Elite -->
+        <div class="hb-window plan-card">
+          <div class="plan-titlebar" style="background:linear-gradient(90deg,#2a0040,#1a003a);">
+            <h3>👑 Elite</h3>
+          </div>
+          <div class="plan-body">
+            <div class="plan-price" style="color:var(--warning);">€24.99</div>
+            <div class="plan-credits">3,500 créditos (+500 bonus)</div>
+            <ul class="plan-features">
+              <li>Bots ilimitados</li>
+              <li>Todos los hoteles</li>
+              <li>Soporte 24/7 VIP</li>
+              <li>API personalizada</li>
+              <li>Panel avanzado</li>
+              <li>Sin caducidad</li>
+            </ul>
+            <button class="hb-btn" onclick="selectPlan('Elite',3500,24.99)" style="width:100%;justify-content:center;background:linear-gradient(180deg,#8a6a00,#5a4000);">Seleccionar</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment methods -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+
+    <!-- Traditional payment -->
+    <div class="hb-window">
+      <div class="hb-window-title"><h3>💳 Pago online</h3></div>
+      <div class="hb-window-body">
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem;">Pago seguro con tarjeta o PayPal.</p>
+        <div style="display:flex;flex-direction:column;gap:.6rem;">
+          <div class="pay-method hb-window selected" id="pay-stripe" onclick="selectPayment('stripe')">
+            <div class="pay-icon">💳</div>
+            <div class="pay-info">
+              <div class="pay-name">Tarjeta / Stripe</div>
+              <div class="pay-desc">Visa, Mastercard, AMEX</div>
+            </div>
+            <div class="pay-radio"></div>
+          </div>
+          <div class="pay-method hb-window" id="pay-paypal" onclick="selectPayment('paypal')">
+            <div class="pay-icon">🅿</div>
+            <div class="pay-info">
+              <div class="pay-name">PayPal</div>
+              <div class="pay-desc">Rápido y seguro</div>
+            </div>
+            <div class="pay-radio"></div>
+          </div>
+        </div>
+        <button class="hb-btn" id="pay-btn" onclick="processPay()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:1rem;" disabled>
+          🔒 Pagar — selecciona un pack
+        </button>
+      </div>
+    </div>
+
+    <!-- In-game payment -->
+    <div class="hb-window">
+      <div class="hb-window-title" style="background:linear-gradient(90deg,#1a0650,#0a2a6e);">
+        <h3>🎮 Pago en Habbo</h3>
+      </div>
+      <div class="hb-window-body">
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem;">Paga dentro del juego con monedas Habbo.</p>
+        <ul class="ingame-steps">
+          <li>Selecciona el pack que quieres arriba</li>
+          <li>Ve a la sala <strong>HabboBots Shop</strong> en habbo.es</li>
+          <li>Entrega las monedas al bot de la sala</li>
+          <li>El sistema confirma el pago automáticamente via API</li>
+          <li>¡Los créditos se acreditan en tu cuenta!</li>
+        </ul>
+        <button class="hb-btn hb-btn-purple" onclick="openInGamePayment()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.5rem;">
+          🏨 Abrir sala en Habbo
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Confirm modal -->
+  <div class="hb-overlay hidden" id="pay-modal">
+    <div class="hb-alert hb-alert-purple">
+      <div class="hb-window-title">
+        <h3>Confirmar compra</h3>
+        <span class="hb-close" onclick="document.getElementById('pay-modal').classList.add('hidden')">✕</span>
+      </div>
+      <div class="hb-alert-body">
+        <p id="pay-modal-text">¿Confirmas la compra del pack <strong>Pro</strong> por <strong>€9.99</strong>?</p>
+        <p style="margin-top:.5rem;font-size:.78rem;color:var(--text-muted);">Serás redirigido a la pasarela de pago segura.</p>
+      </div>
+      <div class="hb-alert-footer">
+        <button class="hb-btn hb-btn-ghost" onclick="document.getElementById('pay-modal').classList.add('hidden')">Cancelar</button>
+        <button class="hb-btn hb-btn-purple" onclick="confirmPayment()">✓ Confirmar y pagar</button>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline slot="scripts">
+    let selectedPlan = null;
+    let selectedPayment = 'stripe';
+
+    // ── Load real credit balance ───────────────────
+    (async () => {
+      try {
+        const { credits } = await CreditsAPI.balance();
+        const balEl = document.querySelector('[data-credits-badge]');
+        if (balEl) balEl.querySelector('strong').textContent = credits.toLocaleString();
+      } catch {}
+    })();
+
+    function selectPlan(name, credits, price) {
+      selectedPlan = { name, credits, price, packId: name.toLowerCase() };
+      const btn = document.getElementById('pay-btn');
+      btn.textContent = `🔒 Pagar ${name} — €${price}`;
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      showToast(`Pack ${name} seleccionado: ${credits} créditos`, 'info');
+    }
+
+    function selectPayment(method) {
+      selectedPayment = method;
+      document.querySelectorAll('.pay-method').forEach(el => el.classList.remove('selected'));
+      document.getElementById('pay-' + method).classList.add('selected');
+    }
+
+    function processPay() {
+      if (!selectedPlan) return;
+      document.getElementById('pay-modal-text').innerHTML =
+        `¿Confirmas la compra del pack <strong>${selectedPlan.name}</strong> por <strong>€${selectedPlan.price}</strong>?`;
+      document.getElementById('pay-modal').classList.remove('hidden');
+    }
+
+    async function confirmPayment() {
+      document.getElementById('pay-modal').classList.add('hidden');
+      showToast('Procesando…', 'info');
+      try {
+        const result = await CreditsAPI.checkout(selectedPlan.packId, selectedPayment);
+        if (result.stub) {
+          // Dev mode — backend returns a stub
+          showToast(`Dev: ${result.message}`, 'info');
+        } else if (result.clientSecret) {
+          // Production: initiate Stripe.js payment
+          showToast('Redirigiendo a Stripe…', 'info');
+          // window.Stripe(PUBLISHABLE_KEY).redirectToCheckout(...)
+        } else if (result.approvalUrl) {
+          window.location.href = result.approvalUrl;
+        } else {
+          showToast(result.message || '¡Créditos añadidos!', 'success');
+        }
+      } catch (err) {
+        showToast(err.message || 'Error al procesar el pago', 'danger');
+      }
+    }
+
+    function openInGamePayment() {
+      showToast('Abriendo sala HabboBots Shop en habbo.es…', 'info');
+    }
+  </script>
+</DashLayout>
