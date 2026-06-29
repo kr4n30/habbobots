@@ -1,0 +1,712 @@
+---
+// Panel de control del bot — solo admins/moderadores
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bot Control — HabboBots</title>
+  <link rel="stylesheet" href="/css/global.css" />
+  <script src="/js/api.js" is:inline></script>
+  <style>
+    /* ── Layout ── */
+    body { background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-sans); margin: 0; }
+    .page-wrap { display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar { display: flex; align-items: center; gap: 1rem; padding: .75rem 1.5rem;
+              background: var(--bg-card); border-bottom: 1px solid var(--border); }
+    .topbar a { color: var(--text-muted); font-size: .85rem; text-decoration: none; }
+    .topbar a:hover { color: var(--text-primary); }
+    .topbar-title { font-size: 1.1rem; font-weight: 700; color: var(--purple-primary); margin-left: auto; }
+    .main { display: grid; grid-template-columns: 280px 1fr; gap: 0; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar { background: var(--bg-card); border-right: 1px solid var(--border);
+               display: flex; flex-direction: column; overflow: hidden; }
+    .sidebar-header { padding: .75rem 1rem; border-bottom: 1px solid var(--border);
+                      display: flex; align-items: center; gap: .5rem; }
+    .sidebar-header h3 { margin: 0; font-size: .9rem; }
+    .bot-list { overflow-y: auto; flex: 1; }
+    .bot-item { padding: .6rem 1rem; border-bottom: 1px solid var(--border);
+                cursor: pointer; display: flex; align-items: center; gap: .6rem;
+                transition: background .15s; }
+    .bot-item:hover { background: var(--bg-hover); }
+    .bot-item.active { background: var(--purple-primary)22; border-left: 3px solid var(--purple-primary); }
+    .bot-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-online  { background: var(--success); }
+    .dot-offline { background: var(--text-muted); }
+    .dot-error   { background: var(--danger); }
+    .dot-connecting { background: var(--warning); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .bot-name { font-size: .82rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bot-sub  { font-size: .7rem; color: var(--text-muted); }
+    .sidebar-actions { padding: .75rem 1rem; border-top: 1px solid var(--border); display: flex; gap: .4rem; flex-wrap: wrap; }
+
+    /* ── Main panel ── */
+    .panel { display: flex; flex-direction: column; overflow: hidden; }
+    .panel-tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg-card); }
+    .tab-btn { padding: .55rem 1rem; font-size: .82rem; cursor: pointer; border: none;
+               background: none; color: var(--text-muted); border-bottom: 2px solid transparent;
+               transition: all .15s; }
+    .tab-btn.active { color: var(--purple-primary); border-bottom-color: var(--purple-primary); }
+    .tab-btn:hover:not(.active) { color: var(--text-primary); }
+
+    .tab-content { display: none; flex: 1; overflow: hidden; }
+    .tab-content.active { display: flex; flex-direction: column; }
+
+    /* ── Actions tab ── */
+    .actions-wrap { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; }
+    .act-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: .85rem; }
+    .act-section h4 { margin: 0 0 .65rem; font-size: .8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+    .act-row { display: flex; gap: .4rem; flex-wrap: wrap; align-items: flex-end; }
+    .act-input { flex: 1; min-width: 120px; background: var(--bg-input); border: 1px solid var(--border);
+                 border-radius: 6px; padding: .4rem .7rem; font-size: .82rem; color: var(--text-primary);
+                 outline: none; }
+    .act-input:focus { border-color: var(--purple-primary); }
+    .act-btn  { padding: .4rem .8rem; border: none; border-radius: 6px; font-size: .78rem; font-weight: 600;
+                cursor: pointer; transition: opacity .15s; white-space: nowrap; }
+    .act-btn:hover { opacity: .85; }
+    .act-btn-primary  { background: var(--purple-primary); color: #fff; }
+    .act-btn-success  { background: var(--success);        color: #fff; }
+    .act-btn-danger   { background: var(--danger);         color: #fff; }
+    .act-btn-warning  { background: var(--warning);        color: #111; }
+    .act-btn-muted    { background: var(--bg-hover);       color: var(--text-primary); }
+    .num-input { width: 70px; }
+
+    /* ── Logs tab ── */
+    .log-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .log-toolbar { padding: .5rem 1rem; border-bottom: 1px solid var(--border); background: var(--bg-card);
+                   display: flex; gap: .4rem; align-items: center; }
+    .log-box { flex: 1; overflow-y: auto; padding: .75rem 1rem; font-family: monospace; font-size: .75rem;
+               line-height: 1.6; background: var(--bg-primary); }
+    .log-line { margin: 0; white-space: pre-wrap; word-break: break-all; }
+    .log-info  { color: var(--text-primary); }
+    .log-error { color: var(--danger); }
+    .log-warn  { color: var(--warning); }
+    .log-ok    { color: var(--success); }
+
+    /* ── Accounts tab ── */
+    .accounts-wrap { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; }
+    .account-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+                    padding: .65rem .85rem; display: flex; align-items: center; gap: .5rem; }
+    .account-name { flex: 1; font-size: .82rem; font-weight: 600; }
+    .account-sub  { font-size: .72rem; color: var(--text-muted); }
+
+    /* ── Proxies tab ── */
+    .proxies-wrap { padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; }
+    .proxy-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+                  padding: .55rem .85rem; font-size: .78rem; font-family: monospace; display: flex;
+                  align-items: center; gap: .5rem; }
+    .proxy-name { flex: 1; }
+
+    /* ── Empty/loading states ── */
+    .empty-state { padding: 2rem; text-align: center; color: var(--text-muted); font-size: .85rem; }
+    .badge { display: inline-block; padding: .15rem .4rem; border-radius: 4px; font-size: .7rem; font-weight: 700; }
+    .badge-success { background: var(--success)22; color: var(--success); }
+    .badge-danger  { background: var(--danger)22;  color: var(--danger);  }
+    .badge-muted   { background: var(--bg-hover);  color: var(--text-muted); }
+    .toast-bar { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+                 background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+                 padding: .7rem 1.2rem; font-size: .82rem; z-index: 999; display: none;
+                 box-shadow: 0 4px 20px #0008; }
+
+    /* ── No bot selected ── */
+    .no-bot { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+              color: var(--text-muted); gap: .5rem; }
+    .no-bot-icon { font-size: 3rem; }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <a href="/home">← Inicio</a>
+    <a href="/dashboard">Admin</a>
+    <span class="topbar-title">🤖 Bot Control Panel</span>
+    <span id="gui-status" style="font-size:.78rem;color:var(--text-muted);margin-left:.5rem;">Conectando al bot manager…</span>
+    <button class="act-btn act-btn-muted" style="margin-left:.5rem;font-size:.75rem;" onclick="refreshBots()">⟳ Refrescar</button>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Sidebar: bot list -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>🤖</span>
+        <h3>Bots (<span id="bot-count">0</span>)</h3>
+      </div>
+      <div class="bot-list" id="bot-list">
+        <div class="empty-state">Cargando bots…</div>
+      </div>
+      <div class="sidebar-actions">
+        <button class="act-btn act-btn-success" style="flex:1" onclick="connectAll()">▶ Conectar todos</button>
+        <button class="act-btn act-btn-danger"  style="flex:1" onclick="disconnectAll()">■ Desconectar todos</button>
+      </div>
+    </div>
+
+    <!-- Panel -->
+    <div class="panel" id="main-panel">
+      <div class="no-bot">
+        <div class="no-bot-icon">🎮</div>
+        <div>Selecciona un bot del panel izquierdo</div>
+        <div style="font-size:.75rem;">o conecta todos para empezar</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-bar" id="toast"></div>
+
+<script is:inline>
+(async () => {
+  // ── Auth guard ───────────────────────────────────
+  try {
+    const { user } = await AuthAPI.me();
+    if (user.role !== 'admin' && user.role !== 'moderator') {
+      window.location.href = '/home'; return;
+    }
+  } catch { window.location.href = '/'; return; }
+
+  // ── State ────────────────────────────────────────
+  let _bots       = [];
+  let _selIdx     = null;
+  let _logEs      = null;
+  let _logLines   = [];
+  let _accounts   = [];
+  let _proxies    = [];
+
+  // ── API helpers ──────────────────────────────────
+  const API_BASE = '/api/admin/botpanel';
+  const token    = sessionStorage.getItem('hb_token');
+  const H        = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` });
+
+  async function bpFetch(path, opts = {}) {
+    const r = await fetch(`${API_BASE}${path}`, {
+      ...opts, headers: { ...H(), ...(opts.headers || {}) }
+    });
+    const ct = r.headers.get('content-type') || '';
+    const data = ct.includes('json') ? await r.json() : await r.text();
+    if (!r.ok) throw new Error((data && data.error) || `Error ${r.status}`);
+    return data;
+  }
+
+  function bpPost(path, body = {}) {
+    return bpFetch(path, { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  // ── Toast ─────────────────────────────────────────
+  function toast(msg, type = 'info') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.borderColor = type === 'danger' ? 'var(--danger)' : type === 'success' ? 'var(--success)' : 'var(--border)';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.style.display = 'none', 3000);
+  }
+
+  // ── Load bots ─────────────────────────────────────
+  async function refreshBots() {
+    try {
+      const data = await bpFetch('/bots');
+      _bots = Array.isArray(data) ? data : (data.bots || []);
+      document.getElementById('bot-count').textContent = _bots.length;
+      renderBotList();
+      document.getElementById('gui-status').textContent = `✓ Bot manager conectado (${_bots.length} bot${_bots.length !== 1 ? 's' : ''})`;
+      document.getElementById('gui-status').style.color = 'var(--success)';
+    } catch (e) {
+      document.getElementById('gui-status').textContent = `✗ Bot manager offline: ${e.message}`;
+      document.getElementById('gui-status').style.color = 'var(--danger)';
+      document.getElementById('bot-list').innerHTML = `<div class="empty-state" style="color:var(--danger);">Bot manager no disponible.<br>¿Está corriendo web.py?</div>`;
+    }
+  }
+
+  function renderBotList() {
+    const list = document.getElementById('bot-list');
+    if (!_bots.length) { list.innerHTML = '<div class="empty-state">Sin bots cargados</div>'; return; }
+    list.innerHTML = _bots.map((b, i) => {
+      const s = b.status || 'offline';
+      const dot = s === 'online' ? 'online' : s === 'connecting' ? 'connecting' : s === 'error' ? 'error' : 'offline';
+      return `<div class="bot-item ${_selIdx === i ? 'active' : ''}" onclick="selectBot(${i})">
+        <div class="bot-dot dot-${dot}"></div>
+        <div>
+          <div class="bot-name">${b.name || b.username || `Bot ${i}`}</div>
+          <div class="bot-sub">${b.hotel || '—'} · ${s}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Select bot ────────────────────────────────────
+  window.selectBot = function(idx) {
+    _selIdx = idx;
+    renderBotList();
+    renderPanel(idx);
+  };
+
+  function renderPanel(idx) {
+    const bot = _bots[idx];
+    if (!bot) return;
+    const panel = document.getElementById('main-panel');
+    panel.innerHTML = `
+      <!-- Tab bar -->
+      <div class="panel-tabs">
+        <button class="tab-btn active" onclick="switchTab('actions',this)">⚡ Acciones</button>
+        <button class="tab-btn"        onclick="switchTab('logs',this)">📜 Logs</button>
+        <button class="tab-btn"        onclick="switchTab('accounts',this)">👤 Cuentas</button>
+        <button class="tab-btn"        onclick="switchTab('proxies',this)">🌐 Proxies</button>
+      </div>
+
+      <!-- ACTIONS -->
+      <div class="tab-content active" id="tab-actions">
+        <div class="actions-wrap">
+
+          <!-- Status bar -->
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+            <span style="font-weight:700;font-size:.9rem;">${bot.name || bot.username || `Bot ${idx}`}</span>
+            <span class="badge ${bot.status==='online'?'badge-success':bot.status==='error'?'badge-danger':'badge-muted'}">${bot.status||'offline'}</span>
+            <span style="color:var(--text-muted);font-size:.78rem;">${bot.hotel || ''}</span>
+            <div style="margin-left:auto;display:flex;gap:.4rem;">
+              <button class="act-btn act-btn-success" onclick="connectBot(${idx})">▶ Conectar</button>
+              <button class="act-btn act-btn-danger"  onclick="disconnectBot(${idx})">■ Desconectar</button>
+              <button class="act-btn act-btn-muted"   onclick="refreshHeaders(${idx})" title="Refrescar headers">⟳ Headers</button>
+            </div>
+          </div>
+
+          <!-- Say / Shout / Whisper -->
+          <div class="act-section">
+            <h4>💬 Mensajes</h4>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <input id="msg-text" class="act-input" placeholder="Mensaje…" onkeydown="if(event.key==='Enter')act('shout',{msg:this.value})" />
+              <button class="act-btn act-btn-primary" onclick="act('shout',{msg:v('msg-text')})">SHOUT</button>
+              <button class="act-btn act-btn-muted"   onclick="act('say',  {msg:v('msg-text')})">SAY</button>
+            </div>
+            <div class="act-row">
+              <input id="whisper-user" class="act-input" placeholder="Usuario…" style="max-width:150px;" />
+              <input id="whisper-msg"  class="act-input" placeholder="Mensaje privado…" />
+              <button class="act-btn act-btn-primary" onclick="act('whisper',{user:v('whisper-user'),msg:v('whisper-msg')})">WHISPER</button>
+            </div>
+          </div>
+
+          <!-- Motto / Figure -->
+          <div class="act-section">
+            <h4>✏️ Perfil</h4>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <input id="motto-text" class="act-input" placeholder="Nuevo motto…" />
+              <button class="act-btn act-btn-primary" onclick="act('motto',{motto:v('motto-text')})">Cambiar motto</button>
+            </div>
+            <div class="act-row">
+              <select id="figure-gender" class="act-input" style="max-width:80px;">
+                <option value="M">M</option><option value="F">F</option>
+              </select>
+              <input id="figure-code" class="act-input" placeholder="Código figura…" />
+              <button class="act-btn act-btn-primary" onclick="act('figure',{gender:v('figure-gender'),figure:v('figure-code')})">Set figura</button>
+              <button class="act-btn act-btn-muted"   onclick="act('rand_look',{})">⊞ Rand Look</button>
+              <button class="act-btn act-btn-muted"   onclick="act('rand_nick',{})">✎ Rand Nick</button>
+            </div>
+          </div>
+
+          <!-- Room / Walk -->
+          <div class="act-section">
+            <h4>🚶 Sala y movimiento</h4>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <input id="room-id" class="act-input num-input" type="number" placeholder="Room ID" />
+              <button class="act-btn act-btn-primary" onclick="act('join',{room:parseInt(v('room-id'))})">Entrar sala</button>
+              <button class="act-btn act-btn-danger"  onclick="act('leave',{})">Salir sala</button>
+            </div>
+            <div class="act-row">
+              <input id="walk-x" class="act-input num-input" type="number" placeholder="X" value="5" />
+              <input id="walk-y" class="act-input num-input" type="number" placeholder="Y" value="5" />
+              <button class="act-btn act-btn-primary" onclick="act('walk',{x:parseInt(v('walk-x')),y:parseInt(v('walk-y'))})">Caminar</button>
+              <button class="act-btn act-btn-warning" onclick="act('rand_walk',{})">⟳ Rand walk</button>
+              <button class="act-btn act-btn-danger"  onclick="act('stop_walk',{})">■ Stop walk</button>
+            </div>
+          </div>
+
+          <!-- Dance / Sign / Effect / Posture -->
+          <div class="act-section">
+            <h4>💃 Animaciones</h4>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <input id="dance-style" class="act-input num-input" type="number" placeholder="1-6" value="1" min="1" max="6" />
+              <button class="act-btn act-btn-primary" onclick="act('dance',{style:parseInt(v('dance-style'))})">Dance</button>
+              <input id="sign-id" class="act-input num-input" type="number" placeholder="Sign" value="1" min="1" max="18" />
+              <button class="act-btn act-btn-primary" onclick="act('sign',{sign:parseInt(v('sign-id'))})">Sign</button>
+              <input id="effect-id" class="act-input num-input" type="number" placeholder="Effect" value="1" min="1" />
+              <button class="act-btn act-btn-primary" onclick="act('effect',{effect:parseInt(v('effect-id'))})">Effect</button>
+            </div>
+            <div class="act-row">
+              <button class="act-btn act-btn-muted" onclick="act('posture',{posture:1})">Sentarse</button>
+              <button class="act-btn act-btn-muted" onclick="act('posture',{posture:0})">Levantarse</button>
+            </div>
+          </div>
+
+          <!-- Social -->
+          <div class="act-section">
+            <h4>👥 Social</h4>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <input id="tgt-user" class="act-input" placeholder="Usuario objetivo…" />
+              <button class="act-btn act-btn-success" onclick="act('respect',{user:v('tgt-user')})">+ Respeto</button>
+              <button class="act-btn act-btn-primary" onclick="act('friend', {user:v('tgt-user')})">+ Amigo</button>
+              <button class="act-btn act-btn-muted"   onclick="act('copy_looks',{user:v('tgt-user')})">Copiar looks</button>
+              <button class="act-btn act-btn-muted"   onclick="act('stalk',{user:v('tgt-user')})">Stalk</button>
+            </div>
+          </div>
+
+          <!-- Nav Search -->
+          <div class="act-section">
+            <h4>🔍 Buscar sala</h4>
+            <div class="act-row">
+              <input id="nav-query" class="act-input" placeholder="Nombre de sala…" />
+              <input id="nav-count" class="act-input num-input" type="number" placeholder="Cant." value="5" min="1" max="50" />
+              <button class="act-btn act-btn-primary" onclick="navSearch()">Buscar</button>
+              <button class="act-btn act-btn-muted"   onclick="act('scan',{})">Scan</button>
+            </div>
+            <div id="nav-results" style="margin-top:.5rem;font-size:.75rem;color:var(--text-muted);"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- LOGS -->
+      <div class="tab-content" id="tab-logs">
+        <div class="log-wrap">
+          <div class="log-toolbar">
+            <button class="act-btn act-btn-muted" onclick="loadBotLog(${idx})">⟳ Cargar log</button>
+            <button class="act-btn act-btn-muted" onclick="startLiveStream()">▶ Live stream</button>
+            <button class="act-btn act-btn-danger" onclick="stopLiveStream()">■ Parar stream</button>
+            <span id="stream-status" style="font-size:.75rem;color:var(--text-muted);margin-left:auto;"></span>
+            <button class="act-btn act-btn-muted" onclick="clearLogs()">🗑 Limpiar</button>
+          </div>
+          <div class="log-box" id="log-box"><div class="empty-state">Sin logs. Haz clic en "Cargar log" o "Live stream".</div></div>
+        </div>
+      </div>
+
+      <!-- ACCOUNTS -->
+      <div class="tab-content" id="tab-accounts">
+        <div class="accounts-wrap">
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+            <button class="act-btn act-btn-muted" onclick="loadAccounts()">⟳ Cargar cuentas</button>
+            <button class="act-btn act-btn-muted" onclick="saveAccounts()">💾 Guardar</button>
+          </div>
+          <!-- Add account -->
+          <div class="act-section">
+            <h4>➕ Añadir cuenta (cookie)</h4>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <select id="add-hotel" class="act-input" style="max-width:120px;">
+                <option value="es">habbo.es</option>
+                <option value="com">habbo.com</option>
+                <option value="br">habbo.com.br</option>
+                <option value="tr">habbo.com.tr</option>
+                <option value="fi">habbo.fi</option>
+                <option value="de">habbo.de</option>
+              </select>
+            </div>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <textarea id="add-cookie" class="act-input" rows="2" placeholder="Pega la cookie aquí…" style="resize:vertical;"></textarea>
+            </div>
+            <div class="act-row">
+              <button class="act-btn act-btn-muted" onclick="parseCookie()">🔍 Parsear cookie</button>
+              <button class="act-btn act-btn-primary" onclick="addAccount()">➕ Añadir cuenta</button>
+            </div>
+            <div id="cookie-parsed" style="font-size:.75rem;margin-top:.4rem;color:var(--text-muted);"></div>
+          </div>
+          <div id="accounts-list"><div class="empty-state">Carga las cuentas para verlas</div></div>
+        </div>
+      </div>
+
+      <!-- PROXIES -->
+      <div class="tab-content" id="tab-proxies">
+        <div class="proxies-wrap">
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+            <button class="act-btn act-btn-muted" onclick="loadProxies()">⟳ Cargar proxies</button>
+            <button class="act-btn act-btn-muted" onclick="saveProxies()">💾 Guardar</button>
+          </div>
+          <!-- Add proxy -->
+          <div class="act-section">
+            <h4>➕ Añadir proxy</h4>
+            <div class="act-row">
+              <input id="new-proxy" class="act-input" placeholder="host:port o user:pass@host:port" />
+              <button class="act-btn act-btn-primary" onclick="addProxy()">Añadir</button>
+            </div>
+          </div>
+          <div id="proxies-list"><div class="empty-state">Carga los proxies para verlos</div></div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Tab switching ─────────────────────────────────
+  window.switchTab = function(name, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${name}`)?.classList.add('active');
+    // auto-load
+    if (name === 'accounts') loadAccounts();
+    if (name === 'proxies')  loadProxies();
+    if (name === 'logs')     { stopLiveStream(); }
+  };
+
+  // ── Value helper ──────────────────────────────────
+  function v(id) { return document.getElementById(id)?.value || ''; }
+
+  // ── Action proxy ─────────────────────────────────
+  window.act = async function(name, data) {
+    if (_selIdx === null) { toast('Selecciona un bot primero', 'danger'); return; }
+    try {
+      const body = { target: String(_selIdx), ...data };
+      await bpPost(`/action/${name}`, body);
+      toast(`✓ ${name}`, 'success');
+    } catch (e) { toast(`✗ ${name}: ${e.message}`, 'danger'); }
+  };
+
+  // ── Nav search ────────────────────────────────────
+  window.navSearch = async function() {
+    if (_selIdx === null) { toast('Selecciona un bot primero', 'danger'); return; }
+    try {
+      const res = await bpPost('/action/nav_search', {
+        target: String(_selIdx),
+        query: v('nav-query'),
+        count: parseInt(v('nav-count')) || 5,
+      });
+      const results = res.rooms || res.result || [];
+      const el = document.getElementById('nav-results');
+      if (!results.length) { el.textContent = 'Sin resultados'; return; }
+      el.innerHTML = results.map(r =>
+        `<div style="padding:.2rem 0;border-bottom:1px solid var(--border);">
+          <strong>${r.name || r.roomName || r.id}</strong>
+          <span style="color:var(--text-muted);margin-left:.5rem;">${r.usersNow ?? r.users ?? ''}👥</span>
+          <button class="act-btn act-btn-muted" style="padding:.2rem .5rem;font-size:.7rem;margin-left:.5rem;"
+            onclick="act('join',{room:${r.id || r.flatId}})">Entrar</button>
+        </div>`
+      ).join('');
+    } catch (e) { toast(`Nav search: ${e.message}`, 'danger'); }
+  };
+
+  // ── Connect / Disconnect ──────────────────────────
+  window.connectBot = async function(idx) {
+    try {
+      await bpPost('/connect', { target: String(idx) });
+      toast('▶ Conectando…', 'success');
+      setTimeout(refreshBots, 2000);
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  window.disconnectBot = async function(idx) {
+    try {
+      await bpPost('/disconnect', { target: String(idx) });
+      toast('■ Desconectado', 'success');
+      setTimeout(refreshBots, 1000);
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  window.connectAll = async function() {
+    try {
+      await bpPost('/connect', { target: 'all' });
+      toast('▶ Conectando todos…', 'success');
+      setTimeout(refreshBots, 2000);
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  window.disconnectAll = async function() {
+    try {
+      await bpPost('/disconnect', { target: 'all' });
+      toast('■ Desconectados todos', 'success');
+      setTimeout(refreshBots, 1000);
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  window.refreshHeaders = async function(idx) {
+    try {
+      await bpPost('/headers/refresh', { target: String(idx) });
+      toast('⟳ Headers refrescados', 'success');
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  // ── Logs ──────────────────────────────────────────
+  window.loadBotLog = async function(idx) {
+    try {
+      const data = await bpFetch(`/bots/${idx}/log`);
+      const lines = Array.isArray(data) ? data : (data.log || data.lines || []);
+      _logLines = lines;
+      renderLogs();
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  function renderLogs() {
+    const box = document.getElementById('log-box');
+    if (!box) return;
+    if (!_logLines.length) { box.innerHTML = '<div class="empty-state">Sin logs</div>'; return; }
+    box.innerHTML = _logLines.map(l => {
+      const t = typeof l === 'string' ? l : (l.msg || JSON.stringify(l));
+      const cls = t.includes('[ERROR]') || t.includes('error') ? 'log-error'
+                : t.includes('[WARN]')  || t.includes('warn')  ? 'log-warn'
+                : t.includes('[OK]')    || t.includes('✓')     ? 'log-ok'
+                : 'log-info';
+      return `<p class="log-line ${cls}">${escHtml(t)}</p>`;
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  window.startLiveStream = function() {
+    stopLiveStream();
+    const status = document.getElementById('stream-status');
+    if (status) { status.textContent = '🔴 Live'; status.style.color = 'var(--danger)'; }
+    _logLines = [];
+    _logEs = new EventSource(BotControlAPI.streamURL());
+    _logEs.onmessage = (e) => {
+      const box = document.getElementById('log-box');
+      if (!box) { stopLiveStream(); return; }
+      try {
+        const d = JSON.parse(e.data);
+        const msg = d.msg || d.message || JSON.stringify(d);
+        _logLines.push(msg);
+        if (_logLines.length > 500) _logLines.shift();
+        const p = document.createElement('p');
+        p.className = 'log-line ' + (msg.includes('[ERROR]') ? 'log-error' : msg.includes('[WARN]') ? 'log-warn' : 'log-info');
+        p.textContent = msg;
+        if (box.querySelector('.empty-state')) box.innerHTML = '';
+        box.appendChild(p);
+        box.scrollTop = box.scrollHeight;
+      } catch {}
+    };
+    _logEs.onerror = () => {
+      if (status) { status.textContent = '⚠ Stream cortado'; status.style.color = 'var(--warning)'; }
+    };
+  };
+
+  window.stopLiveStream = function() {
+    if (_logEs) { _logEs.close(); _logEs = null; }
+    const status = document.getElementById('stream-status');
+    if (status) { status.textContent = ''; }
+  };
+
+  window.clearLogs = function() {
+    _logLines = [];
+    const box = document.getElementById('log-box');
+    if (box) box.innerHTML = '<div class="empty-state">Logs limpiados</div>';
+  };
+
+  // ── Accounts ──────────────────────────────────────
+  window.loadAccounts = async function() {
+    try {
+      const data = await bpFetch('/accounts/load');
+      _accounts = data.accounts || data || [];
+      renderAccounts();
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  function renderAccounts() {
+    const el = document.getElementById('accounts-list');
+    if (!el) return;
+    if (!_accounts.length) { el.innerHTML = '<div class="empty-state">Sin cuentas cargadas</div>'; return; }
+    el.innerHTML = _accounts.map((a, i) => `
+      <div class="account-item">
+        <div>
+          <div class="account-name">${a.username || a.name || `Cuenta ${i}`}</div>
+          <div class="account-sub">${a.hotel || ''}</div>
+        </div>
+        <button class="act-btn act-btn-danger" onclick="removeAccount(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  window.parseCookie = async function() {
+    const cookie = v('add-cookie').trim();
+    if (!cookie) return;
+    try {
+      const data = await bpPost('/accounts/parse_cookie', { cookie });
+      const el = document.getElementById('cookie-parsed');
+      if (el) el.textContent = `Detectado: ${data.username || '?'} @ ${data.hotel || '?'}`;
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  window.addAccount = async function() {
+    const cookie = v('add-cookie').trim();
+    const hotel  = v('add-hotel');
+    if (!cookie) { toast('Pega una cookie primero', 'warning'); return; }
+    try {
+      await bpPost('/accounts/add', { type: 'cookie', cookie, hotel });
+      toast('✓ Cuenta añadida', 'success');
+      document.getElementById('add-cookie').value = '';
+      loadAccounts();
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  window.removeAccount = async function(idx) {
+    try {
+      await bpPost('/accounts/remove', { index: idx });
+      toast('✓ Cuenta eliminada', 'success');
+      loadAccounts();
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  window.saveAccounts = async function() {
+    try {
+      await bpPost('/accounts/save');
+      toast('💾 Cuentas guardadas', 'success');
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  // ── Proxies ───────────────────────────────────────
+  window.loadProxies = async function() {
+    try {
+      const data = await bpFetch('/proxies/list');
+      _proxies = Array.isArray(data) ? data : (data.proxies || []);
+      renderProxies();
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  function renderProxies() {
+    const el = document.getElementById('proxies-list');
+    if (!el) return;
+    if (!_proxies.length) { el.innerHTML = '<div class="empty-state">Sin proxies cargados</div>'; return; }
+    el.innerHTML = _proxies.map((p, i) => {
+      const addr = typeof p === 'string' ? p : (p.host ? `${p.host}:${p.port}` : JSON.stringify(p));
+      return `<div class="proxy-item">
+        <span class="proxy-name">${addr}</span>
+        <button class="act-btn act-btn-danger" onclick="deleteProxy(${i})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  window.addProxy = async function() {
+    const proxy = v('new-proxy').trim();
+    if (!proxy) return;
+    try {
+      await bpPost('/proxies/add', { proxy });
+      toast('✓ Proxy añadido', 'success');
+      document.getElementById('new-proxy').value = '';
+      loadProxies();
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  window.deleteProxy = async function(idx) {
+    try {
+      await bpPost('/proxies/delete', { index: idx });
+      toast('✓ Proxy eliminado', 'success');
+      loadProxies();
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  window.saveProxies = async function() {
+    try {
+      await bpPost('/proxies/save');
+      toast('💾 Proxies guardados', 'success');
+    } catch (e) { toast(e.message, 'danger'); }
+  };
+
+  // ── Utils ─────────────────────────────────────────
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Auto-refresh ──────────────────────────────────
+  window.refreshBots = refreshBots;
+  refreshBots();
+  setInterval(refreshBots, 15_000);
+
+})();
+</script>
+</body>
+</html>

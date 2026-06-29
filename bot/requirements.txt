@@ -1,0 +1,17 @@
+# NET-CONTROLLER — Habbo Bot Manager
+# Instalar con: pip install -r requirements.txt
+
+# Web server
+flask>=3.0.0
+
+# CORS para el headless bot manager (Flask)
+flask-cors>=4.0.0
+
+# SOCKS5 proxy support
+PySocks>=1.7.1
+
+# RSA encryption for Habbo DH handshake
+pycryptodome>=3.20.0
+
+# HTTP requests (SSO ticket retrieval)
+requests>=2.31.0

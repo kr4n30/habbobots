@@ -1,0 +1,70 @@
+---
+// Página de retorno de PayPal — captura el pago y redirige con resultado
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Procesando pago… — HabboBots</title>
+  <script src="/js/api.js" is:inline></script>
+  <style>
+    body { background: #0a0a14; color: #fff; font-family: sans-serif;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { text-align: center; padding: 2rem; max-width: 400px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid rgba(0,195,255,.2);
+               border-top-color: #00c3ff; border-radius: 50%; animation: spin .8s linear infinite;
+               margin: 0 auto 1.5rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h2 { font-size: 1.2rem; margin-bottom: .5rem; }
+    p { color: rgba(255,255,255,.6); font-size: .9rem; }
+    .icon { font-size: 3rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="spinner"></div>
+    <h2>Confirmando pago…</h2>
+    <p>Por favor espera, estamos verificando tu pago con PayPal.</p>
+  </div>
+
+  <script is:inline>
+  (async () => {
+    const params    = new URLSearchParams(window.location.search);
+    const paymentId = params.get('paymentId');
+    const card      = document.getElementById('card');
+
+    if (!paymentId) {
+      card.innerHTML = '<div class="icon">❌</div><h2>Error</h2><p>Pago no encontrado.</p>';
+      setTimeout(() => window.location.href = '/tienda', 3000);
+      return;
+    }
+
+    try {
+      const result = await CreditsAPI.capturePaypal(paymentId);
+
+      if (result.alreadyDone || result.ok) {
+        card.innerHTML = `
+          <div class="icon">✅</div>
+          <h2>¡Pago completado!</h2>
+          <p>Se han añadido <strong style="color:#00ffa3">${result.credits} créditos</strong> a tu cuenta.</p>
+          <p style="margin-top:1rem;font-size:.8rem">Redirigiendo a la tienda…</p>
+        `;
+        setTimeout(() => window.location.href = '/tienda?success=1', 2500);
+      } else {
+        throw new Error(result.error || 'Respuesta inesperada');
+      }
+    } catch (e) {
+      card.innerHTML = `
+        <div class="icon">❌</div>
+        <h2>Error al confirmar el pago</h2>
+        <p>${e.message}</p>
+        <p style="margin-top:1rem;font-size:.8rem">Contacta con soporte si el pago fue deducido de tu cuenta PayPal.</p>
+        <p style="margin-top:1rem;font-size:.8rem">Redirigiendo…</p>
+      `;
+      setTimeout(() => window.location.href = '/tienda', 4000);
+    }
+  })();
+  </script>
+</body>
+</html>

@@ -108,21 +108,20 @@ import DashLayout from '../layouts/DashLayout.astro';
             <div class="avatar-glow"></div>
             <img
               id="habbo-avatar"
-              src="https://sandbox.habbo.com/habbo-imaging/avatarimage?figure=hd-180-1369.ch-210-1408.lg-4315.ha-4313.he-1605-1408.cc-4314&gender=M&direction=3&head_direction=3&action=&gesture=nrm&size=l"
+              src="https://www.habbo.es/habbo-imaging/avatarimage?user=Habbo&direction=2&head_direction=3&gesture=sml&headonly=0&size=l"
               alt="Avatar Habbo"
-              onerror="this.src='https://ui-avatars.com/api/?name=Rafa&background=0080ff&color=fff&size=120&rounded=true'"
+              style="image-rendering:pixelated;"
             />
           </div>
-          <div class="username gradient-text">Rafa</div>
-          <div class="user-role">Miembro · Plan Básico</div>
-          <div class="verified-badge">
+          <div class="username gradient-text" id="profile-username">—</div>
+          <div class="user-role" id="profile-role">Cargando…</div>
+          <div class="verified-badge" id="profile-verified-badge">
             <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-            Verificado en habbo.es
+            <span id="profile-verified-text">Verificando…</span>
           </div>
 
-          <div>
-            <span class="hotel-tag">habbo.es</span>
-            <span class="hotel-tag">habbo.com</span>
+          <div id="profile-hotels">
+            <span class="hotel-tag">—</span>
           </div>
 
           <div class="profile-stats">
@@ -248,42 +247,72 @@ import DashLayout from '../layouts/DashLayout.astro';
     // ── Load real user data ────────────────────────
     (async () => {
       try {
-        const { user } = await UsersAPI.me();
-        // Nombre de usuario en el encabezado
-        const usernameEl = document.querySelector('.username');
+        const [{ user }, { accounts }] = await Promise.all([
+          UsersAPI.me(),
+          HabboAPI.accounts().catch(() => ({ accounts: [] })),
+        ]);
+
+        // ── Nombre y rol ────────────────────────────────────
+        const roleLabel = { admin:'Administrador', moderator:'Moderador', user:'Miembro' }[user.role] || 'Miembro';
+        const usernameEl = document.getElementById('profile-username');
         if (usernameEl) usernameEl.textContent = user.username;
+        const roleEl = document.getElementById('profile-role');
+        if (roleEl) roleEl.textContent = `${roleLabel} · ${user.credits?.toLocaleString() || 0} créditos`;
+
         // Actualiza los inputs del formulario
         const inputs = document.querySelectorAll('.form-input');
         if (inputs[0]) inputs[0].value = user.username;
         if (inputs[1]) inputs[1].value = user.email;
-        if (user.habbo_user && inputs[2]) inputs[2].value = user.habbo_user;
         if (user.created_at && inputs[3]) {
           inputs[3].value = new Date(user.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
         }
-        // Créditos en las estadísticas del perfil
+        // Créditos en estadísticas
         const creditStat = document.querySelector('.profile-stat-val.neon-purple');
-        if (creditStat) creditStat.textContent = user.credits.toLocaleString();
+        if (creditStat) creditStat.textContent = user.credits?.toLocaleString() || '0';
+
+        // ── Cuentas Habbo verificadas ────────────────────────
+        if (accounts && accounts.length > 0) {
+          profileHotel = accounts[0].hotel;
+
+          // Hoteles tags
+          const hotelsEl = document.getElementById('profile-hotels');
+          if (hotelsEl) {
+            hotelsEl.innerHTML = accounts.map(a =>
+              `<span class="hotel-tag">habbo.${a.hotel}</span>`
+            ).join('');
+          }
+
+          // Badge verificado
+          const vtxt = document.getElementById('profile-verified-text');
+          if (vtxt) vtxt.textContent = `Verificado en habbo.${accounts[0].hotel}`;
+
+          // ── Avatar Habbo con URL real ────────────────────────
+          const habboName  = accounts[0].habbo_name || user.username;
+          const hotelDomain = accounts[0].hotel === 'com.br' ? 'com.br'
+                            : accounts[0].hotel === 'com' ? 'com' : accounts[0].hotel;
+          const avatarEl   = document.getElementById('habbo-avatar');
+          if (avatarEl) {
+            avatarEl.src = `https://www.habbo.${hotelDomain}/habbo-imaging/avatarimage?user=${encodeURIComponent(habboName)}&direction=2&head_direction=3&gesture=sml&headonly=0&size=l`;
+            avatarEl.onerror = () => {
+              avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username||'?')}&background=0d1428&color=00c3ff&size=120&bold=true&rounded=true`;
+            };
+            // Update también el nombre de Habbo en el input
+            if (inputs[2]) inputs[2].value = habboName;
+          }
+        } else {
+          // Sin cuenta verificada — fallback
+          const avatarEl = document.getElementById('habbo-avatar');
+          if (avatarEl) {
+            avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username||'?')}&background=0d1428&color=00c3ff&size=120&bold=true&rounded=true`;
+          }
+          const vtxt = document.getElementById('profile-verified-text');
+          if (vtxt) vtxt.textContent = 'Sin cuenta Habbo verificada';
+          const badge = document.getElementById('profile-verified-badge');
+          if (badge) badge.style.background = 'rgba(255,190,0,.1)', badge.style.borderColor = 'rgba(255,190,0,.25)', badge.style.color = 'var(--warning)';
+        }
       } catch (err) {
         if (err && err.status === 401) AuthAPI.logout();
       }
-
-      // Load verified accounts
-      try {
-        const { accounts } = await HabboAPI.accounts();
-        if (accounts.length > 0) {
-          // Update hotel tags
-          const tagContainer = document.querySelector('.verified-badge').parentElement;
-          const existingTags = tagContainer.querySelectorAll('.hotel-tag');
-          existingTags.forEach(t => t.remove());
-          accounts.forEach(a => {
-            const span = document.createElement('span');
-            span.className = 'hotel-tag';
-            span.textContent = 'habbo.' + a.hotel;
-            tagContainer.appendChild(span);
-          });
-          profileHotel = accounts[0].hotel; // usar el primer hotel verificado para verificación
-        }
-      } catch {}
 
       // Request verification code on load
       try {

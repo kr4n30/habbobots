@@ -1,0 +1,221 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Soporte" activePage="soporte">
+  <style>
+    .ticket-row {
+      display: flex; align-items: center; gap: 1rem;
+      padding: .85rem 1rem;
+      background: var(--bg-card); border: 1px solid var(--border-glow);
+      border-radius: 10px; cursor: pointer;
+      transition: border-color .15s;
+    }
+    .ticket-row:hover { border-color: rgba(0,195,255,.3); }
+    .ticket-badge {
+      padding: .18rem .55rem; border-radius: 20px;
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .badge-open        { background: rgba(255,190,0,.15); color: var(--warning); }
+    .badge-in_progress { background: rgba(0,195,255,.12); color: var(--blue-primary); }
+    .badge-closed      { background: rgba(100,100,150,.12); color: var(--text-muted); }
+
+    .msg-bubble {
+      padding: .65rem .9rem; border-radius: 10px; font-size: .86rem; line-height: 1.5;
+    }
+    .msg-user  { background: rgba(0,195,255,.07); border: 1px solid rgba(0,195,255,.15); align-self: flex-start; }
+    .msg-admin { background: rgba(155,48,255,.1);  border: 1px solid rgba(155,48,255,.2); align-self: flex-end;  }
+    .msg-meta  { font-size: .7rem; color: var(--text-muted); margin-bottom: .2rem; }
+
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+                     backdrop-filter:blur(6px); z-index:200; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:#0d1428; border:1px solid rgba(0,195,255,.2); border-radius:14px;
+                 width:100%; max-width:520px; padding:1.75rem; position:relative; max-height:90vh; overflow-y:auto; }
+    .modal-close { position:absolute; top:1rem; right:1rem; background:none; border:none;
+                   color:var(--text-muted); font-size:1.4rem; cursor:pointer; }
+    .modal-title { font-family:'Orbitron',sans-serif; font-size:1rem; font-weight:700; margin:0 0 1.25rem; }
+  </style>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <h1 style="font-family:'Orbitron',sans-serif;font-size:1.25rem;font-weight:700;">🎫 Soporte</h1>
+      <p style="color:var(--text-muted);font-size:.86rem;margin-top:.2rem;">¿Tienes un problema? Abre un ticket y te responderemos.</p>
+    </div>
+    <button class="btn btn-primary" onclick="openNewTicket()">+ Nuevo ticket</button>
+  </div>
+
+  <!-- Lista de tickets -->
+  <div id="tickets-list" style="display:flex;flex-direction:column;gap:.6rem;">
+    <div style="text-align:center;padding:2rem;color:var(--text-muted);">Cargando tickets…</div>
+  </div>
+
+  <!-- Modal: nuevo ticket -->
+  <div class="modal-overlay" id="new-ticket-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('new-ticket-modal')">×</button>
+      <h3 class="modal-title">Nuevo ticket de soporte</h3>
+      <div class="form-group" style="margin-bottom:.85rem;">
+        <label class="form-label">Asunto</label>
+        <input type="text" id="nt-subject" class="form-input" placeholder="Resume el problema en una línea" />
+      </div>
+      <div class="form-group" style="margin-bottom:.85rem;">
+        <label class="form-label">Pedido relacionado (opcional)</label>
+        <select id="nt-order" class="form-input" style="cursor:pointer;">
+          <option value="">— Ninguno —</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:1.25rem;">
+        <label class="form-label">Descripción del problema</label>
+        <textarea id="nt-message" class="form-input" rows="5" placeholder="Explica el problema con detalle: qué servicio, cuándo ocurrió, qué esperabas…" style="resize:vertical;"></textarea>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="submitTicket()">Enviar ticket</button>
+    </div>
+  </div>
+
+  <!-- Modal: ver/responder ticket -->
+  <div class="modal-overlay" id="view-ticket-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('view-ticket-modal')">×</button>
+      <h3 class="modal-title" id="vt-subject">Ticket</h3>
+      <p id="vt-status-line" style="font-size:.78rem;color:var(--text-muted);margin-bottom:1rem;"></p>
+      <div id="vt-messages" style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.1rem;max-height:300px;overflow-y:auto;"></div>
+      <div id="vt-reply-area">
+        <textarea id="vt-reply" class="form-input" rows="3" placeholder="Tu respuesta…" style="resize:vertical;margin-bottom:.75rem;"></textarea>
+        <div style="display:flex;gap:.5rem;">
+          <button class="btn btn-primary" style="flex:1;" onclick="replyTicket()">Enviar respuesta</button>
+          <button class="btn" id="vt-close-btn" style="background:rgba(255,180,0,.1);border:1px solid rgba(255,180,0,.3);color:var(--warning);" onclick="closeTicket()">Cerrar ticket</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline src="/js/api.js"></script>
+  <script is:inline>
+    if (!Auth.isLoggedIn()) window.location.href = '/';
+
+    let _currentTicketId = null;
+    let _myOrders        = [];
+
+    (async () => {
+      // Pre-fill desde URL params (llegando desde /servicios)
+      const params  = new URLSearchParams(window.location.search);
+      const orderId = params.get('order_id');
+      const subject = params.get('subject');
+
+      const [, { orders }] = await Promise.all([
+        loadTickets(),
+        ProductsAPI.myOrders().catch(() => ({ orders: [] })),
+      ]);
+      _myOrders = orders || [];
+
+      if (orderId || subject) {
+        openNewTicket(orderId, subject);
+      }
+    })();
+
+    async function loadTickets() {
+      const list = document.getElementById('tickets-list');
+      try {
+        const { tickets } = await TicketsAPI.my();
+        if (!tickets.length) {
+          list.innerHTML = `<div style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:.88rem;">
+            <div style="font-size:2rem;margin-bottom:.5rem;">🎫</div>
+            <p>No tienes tickets abiertos.</p>
+            <p style="margin-top:.25rem;">Si tienes algún problema, abre un ticket arriba.</p>
+          </div>`;
+          return;
+        }
+        list.innerHTML = tickets.map(t => `
+          <div class="ticket-row" onclick="viewTicket('${t.id}')">
+            <span class="ticket-badge badge-${t.status}">${{open:'Abierto',in_progress:'En proceso',closed:'Cerrado'}[t.status]||t.status}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.subject}</div>
+              <div style="font-size:.75rem;color:var(--text-muted);">${t.message_count} mensajes · ${new Date(t.updated_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+            </div>
+            <svg width="16" height="16" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+          </div>`).join('');
+      } catch (e) {
+        list.innerHTML = `<div style="color:var(--danger);padding:1rem;">${e.message}</div>`;
+      }
+    }
+
+    function openNewTicket(preOrderId, preSubject) {
+      // Populate order selector
+      const sel = document.getElementById('nt-order');
+      sel.innerHTML = ['<option value="">— Ninguno —</option>',
+        ..._myOrders.slice(0,30).map(o =>
+          `<option value="${o.id}" ${o.id === preOrderId ? 'selected' : ''}>${o.product_name} · ${o.habbo_name} · ${new Date(o.created_at).toLocaleDateString('es-ES')}</option>`)
+      ].join('');
+      if (preSubject) document.getElementById('nt-subject').value = decodeURIComponent(preSubject);
+      openModal('new-ticket-modal');
+    }
+
+    async function submitTicket() {
+      const subject = document.getElementById('nt-subject').value.trim();
+      const message = document.getElementById('nt-message').value.trim();
+      const orderId = document.getElementById('nt-order').value || undefined;
+      if (!subject || !message) { showToast('Asunto y mensaje son obligatorios', 'warning'); return; }
+      try {
+        await TicketsAPI.create(subject, message, orderId);
+        showToast('Ticket enviado. Te responderemos pronto.', 'success');
+        closeModal('new-ticket-modal');
+        document.getElementById('nt-subject').value = '';
+        document.getElementById('nt-message').value = '';
+        loadTickets();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    async function viewTicket(id) {
+      _currentTicketId = id;
+      try {
+        const { ticket, messages } = await TicketsAPI.get(id);
+        document.getElementById('vt-subject').textContent = ticket.subject;
+        document.getElementById('vt-status-line').textContent =
+          `Estado: ${{ open:'Abierto', in_progress:'En proceso', closed:'Cerrado' }[ticket.status] || ticket.status}
+           · Creado: ${new Date(ticket.created_at).toLocaleDateString('es-ES')}`;
+        document.getElementById('vt-reply-area').style.display = ticket.status === 'closed' ? 'none' : 'block';
+        document.getElementById('vt-reply').value = '';
+
+        document.getElementById('vt-messages').innerHTML = messages.map(m => `
+          <div>
+            <div class="msg-meta">${m.is_admin ? '🛡 Soporte HabboBots' : '👤 Tú'} · ${new Date(m.created_at).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+            <div class="msg-bubble ${m.is_admin ? 'msg-admin' : 'msg-user'}">${m.message.replace(/\n/g,'<br>')}</div>
+          </div>`).join('');
+
+        openModal('view-ticket-modal');
+        // Auto-scroll al final
+        const msgEl = document.getElementById('vt-messages');
+        msgEl.scrollTop = msgEl.scrollHeight;
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    async function replyTicket() {
+      const msg = document.getElementById('vt-reply').value.trim();
+      if (!msg || !_currentTicketId) return;
+      try {
+        await TicketsAPI.reply(_currentTicketId, msg);
+        viewTicket(_currentTicketId);
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    async function closeTicket() {
+      if (!_currentTicketId) return;
+      if (!confirm('¿Marcar este ticket como resuelto?')) return;
+      try {
+        await TicketsAPI.close(_currentTicketId);
+        showToast('Ticket cerrado', 'success');
+        closeModal('view-ticket-modal');
+        loadTickets();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    // Cerrar al clicar fuera
+    ['new-ticket-modal','view-ticket-modal'].forEach(id =>
+      document.getElementById(id).addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(id); })
+    );
+  </script>
+</DashLayout>

@@ -1,0 +1,270 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Verificar cuenta Habbo" activePage="verificar-habbo">
+  <style>
+    .verify-wrap {
+      max-width: 520px; margin: 2rem auto;
+      display: flex; flex-direction: column; gap: 1.25rem;
+    }
+    .verify-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(0,195,255,.18);
+      border-radius: 14px; overflow: hidden;
+    }
+    .verify-header {
+      padding: .85rem 1.25rem;
+      background: linear-gradient(90deg, rgba(0,60,120,.4), rgba(80,0,160,.3));
+      border-bottom: 1px solid rgba(0,195,255,.15);
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .verify-header-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: rgba(155,48,255,.2); border: 1px solid rgba(155,48,255,.3);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .verify-header h2 { font-family:'Orbitron',sans-serif; font-size:.95rem; font-weight:700; margin:0; }
+    .verify-header p  { font-size:.78rem; color:var(--text-muted); margin:.15rem 0 0; }
+
+    .verify-body { padding: 1.5rem; }
+
+    .step-row {
+      display: flex; gap: .75rem; align-items: flex-start;
+      padding: .85rem 0; border-bottom: 1px solid rgba(0,195,255,.06);
+    }
+    .step-row:last-child { border-bottom: none; }
+    .step-num {
+      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(0,195,255,.12); border: 1px solid rgba(0,195,255,.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700; color: var(--blue-primary);
+    }
+    .step-content { flex: 1; }
+    .step-title { font-size:.88rem; font-weight:600; color:#fff; margin:0 0 .3rem; }
+    .step-desc  { font-size:.78rem; color:var(--text-muted); margin:0; line-height:1.5; }
+
+    .code-box {
+      margin: .5rem 0;
+      background: rgba(155,48,255,.08);
+      border: 2px dashed rgba(155,48,255,.4);
+      border-radius: 8px; padding: .75rem 1rem;
+      display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+    }
+    .code-text {
+      font-family:'Orbitron',monospace; font-size:1.15rem; font-weight:800;
+      color:#9b30ff; letter-spacing:.2em;
+    }
+    .code-copy {
+      padding:.3rem .75rem; font-size:.75rem; font-weight:600;
+      background:rgba(155,48,255,.15); border:1px solid rgba(155,48,255,.3);
+      border-radius:5px; color:#9b30ff; cursor:pointer; white-space:nowrap;
+    }
+    .code-copy:hover { background:rgba(155,48,255,.28); }
+
+    .hotel-select {
+      width:100%; padding:.55rem .85rem;
+      background:rgba(0,0,0,.35); border:1px solid var(--border-glow);
+      border-radius:6px; color:#fff; font-size:.9rem; cursor:pointer;
+      margin-top:.4rem;
+    }
+    .hotel-select option { background:#0d1428; }
+
+    .verify-actions { display:flex; flex-direction:column; gap:.6rem; margin-top:.5rem; }
+
+    .alert-box {
+      padding:.75rem 1rem; border-radius:8px; font-size:.82rem; line-height:1.5;
+      display:none;
+    }
+    .alert-box.error   { background:rgba(255,60,60,.1);  border:1px solid rgba(255,60,60,.25); color:#ff8888; }
+    .alert-box.success { background:rgba(0,255,163,.08); border:1px solid rgba(0,255,163,.2);  color:#00ffa3; }
+    .alert-box.show { display:block; }
+  </style>
+
+  <div class="verify-wrap">
+
+    <!-- Info del usuario Discord -->
+    <div id="user-info-bar" style="display:none;padding:.85rem 1.25rem;background:rgba(0,0,0,.3);border:1px solid rgba(0,195,255,.15);border-radius:12px;display:none;align-items:center;gap:.85rem;">
+      <img id="user-avatar" src="" alt="" style="width:40px;height:40px;border-radius:50%;border:2px solid rgba(0,195,255,.3);" />
+      <div>
+        <div style="font-weight:600;font-size:.9rem;color:#fff;" id="user-nick">—</div>
+        <div style="font-size:.75rem;color:var(--text-muted);">Conectado con Discord · Verificación pendiente de Habbo</div>
+      </div>
+    </div>
+
+    <div class="verify-card">
+      <div class="verify-header">
+        <div class="verify-header-icon">
+          <svg width="18" height="18" fill="none" stroke="#9b30ff" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+          <h2>Verifica tu cuenta de Habbo</h2>
+          <p>Paso necesario para acceder a la plataforma</p>
+        </div>
+      </div>
+
+      <div class="verify-body">
+
+        <!-- Paso 1: elegir hotel -->
+        <div class="step-row">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <p class="step-title">Elige tu hotel</p>
+            <select id="hotel-select" class="hotel-select" onchange="requestCode()">
+              <option value="">— Selecciona hotel —</option>
+              <option value="es">habbo.es</option>
+              <option value="com">habbo.com</option>
+              <option value="br">habbo.com.br</option>
+              <option value="tr">habbo.com.tr</option>
+              <option value="fi">habbo.fi</option>
+              <option value="de">habbo.de</option>
+              <option value="fr">habbo.fr</option>
+              <option value="it">habbo.it</option>
+              <option value="nl">habbo.nl</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Paso 2: poner el código -->
+        <div class="step-row">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <p class="step-title">Pon este código como tu misión en Habbo</p>
+            <p class="step-desc">Entra a Habbo, ve a tu perfil y pon exactamente este texto como misión (motto):</p>
+            <div class="code-box" id="code-box" style="display:none;">
+              <span class="code-text" id="verify-code">—</span>
+              <button class="code-copy" onclick="copyCode()">Copiar</button>
+            </div>
+            <p class="step-desc" id="code-waiting" style="color:rgba(0,195,255,.4);margin-top:.4rem;">
+              ← Selecciona el hotel primero
+            </p>
+            <p class="step-desc" style="margin-top:.4rem;color:rgba(255,190,0,.7);">
+              El código expira en <strong>10 minutos</strong>. No cambies la misión hasta verificar.
+            </p>
+          </div>
+        </div>
+
+        <!-- Paso 3: introducir nick -->
+        <div class="step-row">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <p class="step-title">Escribe tu nick de Habbo y verifica</p>
+            <div class="input-wrapper" style="margin-top:.4rem;">
+              <span class="input-icon">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              <input type="text" id="habbo-nick" class="form-input" placeholder="TuNickEnHabbo" />
+            </div>
+          </div>
+        </div>
+
+        <div id="alert-box" class="alert-box"></div>
+
+        <div class="verify-actions">
+          <button id="btn-verify" class="btn btn-primary" onclick="doVerify()" disabled>
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Verificar cuenta Habbo
+          </button>
+          <button class="btn" style="background:none;border:1px solid var(--border-glow);color:var(--text-muted);" onclick="requestCode()">
+            Regenerar código
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <p style="text-align:center;font-size:.78rem;color:var(--text-muted);">
+      ¿Problemas? Contacta en el
+      <a href="#" style="color:var(--blue-primary);">Discord de soporte</a>
+    </p>
+
+  </div>
+
+  <script is:inline src="/js/api.js"></script>
+  <script is:inline>
+    if (!Auth.isLoggedIn()) window.location.href = '/';
+
+    // Cargar info de usuario y mostrar nick + avatar
+    AuthAPI.me().then(({ user }) => {
+      const bar = document.getElementById('user-info-bar');
+      if (user) {
+        document.getElementById('user-nick').textContent = user.discord_tag || user.username || user.email;
+        const avatarEl = document.getElementById('user-avatar');
+        if (user.avatar_url) {
+          avatarEl.src = user.avatar_url;
+        } else {
+          // Generar avatar con iniciales si no tiene Discord
+          avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username || 'U')}&background=0080ff&color=fff&size=40&rounded=true`;
+        }
+        bar.style.display = 'flex';
+      }
+    }).catch(() => {});
+
+    // Si ya tiene Habbo verificado → ir a home
+    HabboAPI.accounts().then(data => {
+      if (data.accounts && data.accounts.length > 0) {
+        window.location.href = '/home';
+      }
+    }).catch(() => {});
+
+    async function requestCode() {
+      const hotel = document.getElementById('hotel-select').value;
+      if (!hotel) return;
+
+      document.getElementById('code-box').style.display     = 'none';
+      document.getElementById('code-waiting').textContent   = 'Generando código…';
+      document.getElementById('btn-verify').disabled        = true;
+      hideAlert();
+
+      try {
+        const { token } = await HabboAPI.requestVerify(hotel);
+        document.getElementById('verify-code').textContent    = token;
+        document.getElementById('code-box').style.display     = 'flex';
+        document.getElementById('code-waiting').style.display = 'none';
+        document.getElementById('btn-verify').disabled        = false;
+      } catch (err) {
+        document.getElementById('code-waiting').textContent = 'Error al generar código. Inténtalo de nuevo.';
+        showAlert('No se pudo generar el código: ' + (err.message || 'error'), 'error');
+      }
+    }
+
+    async function doVerify() {
+      const hotel    = document.getElementById('hotel-select').value;
+      const habboNick = document.getElementById('habbo-nick').value.trim();
+      if (!hotel)    { showAlert('Selecciona un hotel primero', 'error'); return; }
+      if (!habboNick){ showAlert('Escribe tu nick de Habbo', 'error'); return; }
+
+      const btn = document.getElementById('btn-verify');
+      btn.disabled = true;
+      btn.textContent = 'Verificando…';
+      hideAlert();
+
+      try {
+        await HabboAPI.checkVerify(habboNick, hotel);
+        showAlert('¡Cuenta verificada! Redirigiendo…', 'success');
+        setTimeout(() => { window.location.href = '/home'; }, 1200);
+      } catch (err) {
+        const msg = err.data?.found
+          ? `Motto actual: "${err.data.found}". Necesitas: "${err.data.expected}"`
+          : (err.message || 'Error al verificar');
+        showAlert(msg, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Verificar cuenta Habbo';
+      }
+    }
+
+    function copyCode() {
+      const code = document.getElementById('verify-code').textContent;
+      navigator.clipboard.writeText(code).then(() => showAlert('Código copiado al portapapeles', 'success'));
+      setTimeout(hideAlert, 2000);
+    }
+
+    function showAlert(msg, type) {
+      const el = document.getElementById('alert-box');
+      el.textContent = msg;
+      el.className   = `alert-box ${type} show`;
+    }
+    function hideAlert() {
+      document.getElementById('alert-box').className = 'alert-box';
+    }
+  </script>
+</DashLayout>

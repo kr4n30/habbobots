@@ -1,0 +1,141 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Cupones" activePage="admin-cupones">
+<style>
+  .create-card { background:var(--bg-card); border:1px solid var(--border-glow); border-radius:12px; padding:1.2rem; margin-bottom:1.5rem; }
+  .create-title { font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); margin-bottom:.85rem; }
+  .form-row { display:flex; gap:.65rem; flex-wrap:wrap; align-items:flex-end; }
+  .form-group { display:flex; flex-direction:column; gap:.3rem; }
+  .form-group label { font-size:.72rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+  .form-group input, .form-group select {
+    padding:.45rem .8rem; background:rgba(0,0,0,.35); border:1px solid var(--border-glow);
+    border-radius:7px; color:#fff; font-size:.85rem; min-width:120px;
+  }
+  .btn-create { padding:.48rem 1.2rem; background:linear-gradient(135deg,#9b30ff,#6010cc); border:none;
+                border-radius:8px; color:#fff; font-weight:700; cursor:pointer; font-size:.85rem; }
+
+  .coupons-grid { display:flex; flex-direction:column; gap:.5rem; }
+  .coupon-row {
+    display:flex; align-items:center; gap:.75rem; padding:.75rem 1rem;
+    background:var(--bg-card); border:1px solid var(--border-glow); border-radius:10px;
+  }
+  .coup-code { font-family:monospace; font-size:.95rem; font-weight:700; color:var(--blue-primary); min-width:130px; }
+  .coup-info { flex:1; font-size:.78rem; color:var(--text-muted); }
+  .coup-badge { padding:.18rem .5rem; border-radius:20px; font-size:.68rem; font-weight:700; }
+  .badge-active   { background:rgba(0,255,163,.12); color:var(--success); }
+  .badge-inactive { background:rgba(100,100,150,.12); color:var(--text-muted); }
+  .badge-expired  { background:rgba(255,60,60,.1); color:var(--danger); }
+  .coup-actions { display:flex; gap:.4rem; }
+  .btn-toggle { padding:.28rem .65rem; border-radius:6px; border:none; cursor:pointer; font-size:.72rem; font-weight:700; }
+  .btn-on  { background:rgba(255,190,0,.15); color:var(--warning); }
+  .btn-off { background:rgba(0,255,163,.12); color:var(--success); }
+  .btn-del { background:rgba(255,60,60,.1); color:var(--danger); padding:.28rem .65rem; border-radius:6px; border:none; cursor:pointer; font-size:.72rem; font-weight:700; }
+  .empty-state { text-align:center; padding:2rem; color:var(--text-muted); font-size:.87rem; }
+  #msg-box { display:none; padding:.6rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:.84rem; }
+  .msg-ok  { background:rgba(0,255,163,.1); border:1px solid rgba(0,255,163,.3); color:var(--success); }
+  .msg-err { background:rgba(255,60,60,.1); border:1px solid rgba(255,60,60,.3); color:var(--danger); }
+</style>
+
+<div id="msg-box"></div>
+
+<!-- Crear cupón -->
+<div class="create-card">
+  <div class="create-title">Crear cupón</div>
+  <div class="form-row">
+    <div class="form-group">
+      <label>Código</label>
+      <input type="text" id="f-code" placeholder="WELCOME20" style="text-transform:uppercase">
+    </div>
+    <div class="form-group">
+      <label>Descuento %</label>
+      <input type="number" id="f-pct" value="10" min="1" max="100" style="max-width:90px">
+    </div>
+    <div class="form-group">
+      <label>Usos máx.</label>
+      <input type="number" id="f-uses" placeholder="∞" min="1" style="max-width:90px">
+    </div>
+    <div class="form-group">
+      <label>Expira</label>
+      <input type="datetime-local" id="f-exp">
+    </div>
+    <button class="btn-create" onclick="createCoupon()">+ Crear</button>
+  </div>
+</div>
+
+<!-- Lista -->
+<div class="coupons-grid" id="coupon-list">
+  <div class="empty-state">Cargando…</div>
+</div>
+
+<script>
+let _coupons = [];
+
+async function loadCoupons() {
+  const d = await AdminAPI.coupons().catch(() => ({ coupons: [] }));
+  _coupons = d.coupons || [];
+  render();
+}
+
+function render() {
+  const el = document.getElementById('coupon-list');
+  if (!_coupons.length) { el.innerHTML = '<div class="empty-state">No hay cupones aún</div>'; return; }
+  el.innerHTML = _coupons.map(c => {
+    const expired = c.expires_at && new Date(c.expires_at) < new Date();
+    const status  = expired ? 'expired' : c.active ? 'active' : 'inactive';
+    const label   = expired ? 'Expirado' : c.active ? 'Activo' : 'Inactivo';
+    const expStr  = c.expires_at ? new Date(c.expires_at).toLocaleDateString('es-ES') : '∞';
+    return `
+      <div class="coupon-row">
+        <div class="coup-code">${c.code}</div>
+        <div class="coup-info">
+          ${c.discount_pct}% descuento ·
+          Usos: ${c.uses}${c.max_uses ? '/'+c.max_uses : ''} ·
+          Expira: ${expStr}
+        </div>
+        <span class="coup-badge badge-${status}">${label}</span>
+        <div class="coup-actions">
+          ${!expired ? `<button class="btn-toggle ${c.active?'btn-on':'btn-off'}"
+            onclick="toggleCoupon('${c.id}',${c.active})">${c.active?'Desactivar':'Activar'}</button>` : ''}
+          <button class="btn-del" onclick="deleteCoupon('${c.id}')">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function createCoupon() {
+  const code = document.getElementById('f-code').value.trim().toUpperCase();
+  const pct  = parseInt(document.getElementById('f-pct').value);
+  const uses = document.getElementById('f-uses').value;
+  const exp  = document.getElementById('f-exp').value;
+  if (!code) return showMsg('Escribe un código', false);
+  try {
+    await AdminAPI.createCoupon({ code, discount_pct: pct, max_uses: uses||null, expires_at: exp||null });
+    document.getElementById('f-code').value = '';
+    showMsg('Cupón creado ✓', true);
+    await loadCoupons();
+  } catch(e) { showMsg(e.message, false); }
+}
+
+async function toggleCoupon(id, active) {
+  await AdminAPI.updateCoupon(id, { active: !active }).catch(e => showMsg(e.message, false));
+  loadCoupons();
+}
+
+async function deleteCoupon(id) {
+  if (!confirm('¿Eliminar este cupón?')) return;
+  await AdminAPI.deleteCoupon(id).catch(e => showMsg(e.message, false));
+  loadCoupons();
+}
+
+function showMsg(text, ok) {
+  const el = document.getElementById('msg-box');
+  el.className = ok ? 'msg-ok' : 'msg-err';
+  el.textContent = text;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display='none', 3000);
+}
+
+loadCoupons();
+</script>
+</DashLayout>

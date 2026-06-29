@@ -1,0 +1,205 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Métricas" activePage="metricas">
+<slot name="head">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" is:inline></script>
+</slot>
+<style>
+  .period-tabs { display:flex; gap:.4rem; margin-bottom:1.5rem; }
+  .ptab { padding:.38rem .9rem; border-radius:20px; background:none; border:1px solid var(--border-glow);
+          color:var(--text-muted); font-size:.78rem; font-weight:600; cursor:pointer; transition:all .15s; }
+  .ptab.active { background:rgba(0,195,255,.12); border-color:var(--blue-primary); color:var(--blue-primary); }
+
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:.85rem; margin-bottom:1.5rem; }
+  .kpi { background:var(--bg-card); border:1px solid var(--border-glow); border-radius:12px; padding:1rem 1.1rem; }
+  .kpi-val { font-family:'Orbitron',sans-serif; font-size:1.5rem; font-weight:800; }
+  .kpi-lbl { font-size:.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.6px; margin-top:.15rem; }
+  .kpi-blue   { color:var(--blue-primary); }
+  .kpi-green  { color:var(--success); }
+  .kpi-yellow { color:var(--warning); }
+  .kpi-red    { color:var(--danger); }
+
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+  @media(max-width:700px){ .charts-grid { grid-template-columns:1fr; } }
+  .chart-card { background:var(--bg-card); border:1px solid var(--border-glow); border-radius:12px; padding:1.1rem; }
+  .chart-title { font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.6px;
+                 color:var(--text-muted); margin-bottom:.85rem; }
+
+  .section-title { font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.7px;
+                   color:var(--text-muted); margin-bottom:.75rem; }
+  .tables-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+  @media(max-width:700px){ .tables-grid { grid-template-columns:1fr; } }
+  .table-card { background:var(--bg-card); border:1px solid var(--border-glow); border-radius:12px; padding:1.1rem; overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:.8rem; }
+  th { text-align:left; padding:.5rem .6rem; color:var(--text-muted); font-size:.68rem; text-transform:uppercase; letter-spacing:.5px;
+       border-bottom:1px solid rgba(255,255,255,.05); }
+  td { padding:.5rem .6rem; border-bottom:1px solid rgba(255,255,255,.03); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+
+  .pay-bar { display:flex; align-items:center; gap:.5rem; font-size:.78rem; margin-bottom:.4rem; }
+  .pay-fill { height:6px; border-radius:3px; background:var(--blue-primary); transition:width .5s; }
+  .pay-lbl { color:var(--text-muted); font-size:.72rem; }
+</style>
+
+<!-- Period selector -->
+<div class="period-tabs">
+  <button class="ptab" data-p="7d">7 días</button>
+  <button class="ptab active" data-p="30d">30 días</button>
+  <button class="ptab" data-p="90d">90 días</button>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-val kpi-blue"  id="k-users">—</div><div class="kpi-lbl">Usuarios totales</div></div>
+  <div class="kpi"><div class="kpi-val kpi-green" id="k-active">—</div><div class="kpi-lbl">Activos 7d</div></div>
+  <div class="kpi"><div class="kpi-val kpi-green" id="k-rev-month">—</div><div class="kpi-lbl">Créditos este mes</div></div>
+  <div class="kpi"><div class="kpi-val kpi-blue"  id="k-rev-total">—</div><div class="kpi-lbl">Créditos histórico</div></div>
+  <div class="kpi"><div class="kpi-val kpi-blue"  id="k-bots-active">—</div><div class="kpi-lbl">Bots online</div></div>
+  <div class="kpi"><div class="kpi-val kpi-yellow" id="k-churn">—</div><div class="kpi-lbl">Churn bots</div></div>
+  <div class="kpi"><div class="kpi-val kpi-yellow" id="k-tickets">—</div><div class="kpi-lbl">Tickets abiertos</div></div>
+  <div class="kpi"><div class="kpi-val kpi-blue"  id="k-bots-total">—</div><div class="kpi-lbl">Bots rentados</div></div>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid">
+  <div class="chart-card">
+    <div class="chart-title">Créditos vendidos por día</div>
+    <canvas id="chart-revenue" height="180"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Nuevos usuarios por día</div>
+    <canvas id="chart-users" height="180"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Bots rentados por día</div>
+    <canvas id="chart-bots" height="180"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Pedidos de servicio por día</div>
+    <canvas id="chart-orders" height="180"></canvas>
+  </div>
+</div>
+
+<!-- Tables -->
+<div class="tables-grid">
+  <div class="table-card">
+    <div class="section-title">Top usuarios</div>
+    <table>
+      <thead><tr><th>Usuario</th><th>Créditos</th><th>Servicios</th></tr></thead>
+      <tbody id="top-users"></tbody>
+    </table>
+  </div>
+  <div class="table-card">
+    <div class="section-title">Servicios más vendidos</div>
+    <table>
+      <thead><tr><th>Servicio</th><th>Pedidos</th><th>Créditos</th></tr></thead>
+      <tbody id="top-services"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Métodos de pago -->
+<div class="section-title">Distribución de pagos</div>
+<div id="pay-methods" style="background:var(--bg-card);border:1px solid var(--border-glow);border-radius:12px;padding:1.2rem;margin-bottom:1.5rem;"></div>
+
+<script>
+let _charts = {};
+const CHART_DEFAULTS = {
+  responsive: true,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { ticks: { color: '#6d7a9f', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+    y: { ticks: { color: '#6d7a9f', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' }, beginAtZero: true },
+  },
+};
+
+function makeChart(id, labels, data, color = '#00c3ff') {
+  const ctx = document.getElementById(id).getContext('2d');
+  if (_charts[id]) _charts[id].destroy();
+  _charts[id] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data, borderColor: color, backgroundColor: color + '18',
+        fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2,
+      }],
+    },
+    options: CHART_DEFAULTS,
+  });
+}
+
+async function loadMetrics(period = '30d') {
+  try {
+    const d = await AdminAPI.metrics(period);
+    const k = d.kpis;
+
+    document.getElementById('k-users').textContent      = k.totalUsers;
+    document.getElementById('k-active').textContent     = k.activeUsers;
+    document.getElementById('k-rev-month').textContent  = k.revenueMonth.toLocaleString() + ' cr';
+    document.getElementById('k-rev-total').textContent  = k.totalRevenue.toLocaleString() + ' cr';
+    document.getElementById('k-bots-active').textContent= k.activeBots;
+    document.getElementById('k-bots-total').textContent = k.totalBots;
+    document.getElementById('k-churn').textContent      = k.churnRate + '%';
+    document.getElementById('k-tickets').textContent    = k.openTickets;
+
+    const days   = d.charts.revenueByDay.map(r => r.day.slice(5)); // MM-DD
+    const revC   = d.charts.revenueByDay.map(r => r.credits);
+    const usersC = d.charts.usersByDay.map(r => r.count);
+    const botsC  = d.charts.botsByDay.map(r => r.count);
+    const ordersC= d.charts.ordersByDay.map(r => r.count);
+
+    makeChart('chart-revenue', days,   revC,    '#00ffa3');
+    makeChart('chart-users',   d.charts.usersByDay.map(r=>r.day.slice(5)),   usersC,  '#00c3ff');
+    makeChart('chart-bots',    d.charts.botsByDay.map(r=>r.day.slice(5)),    botsC,   '#9b30ff');
+    makeChart('chart-orders',  d.charts.ordersByDay.map(r=>r.day.slice(5)),  ordersC, '#ffbe00');
+
+    // Top usuarios
+    document.getElementById('top-users').innerHTML = d.topUsers.map(u => `
+      <tr>
+        <td style="font-weight:600;color:#fff">${u.username}</td>
+        <td style="color:var(--success)">${(u.total_credits_spent||0).toLocaleString()} cr</td>
+        <td style="color:var(--text-muted)">${u.total_services||0}</td>
+      </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text-muted);text-align:center">Sin datos</td></tr>';
+
+    // Top servicios
+    document.getElementById('top-services').innerHTML = d.topServices.map(s => `
+      <tr>
+        <td style="font-weight:600;color:#fff">${s.name}</td>
+        <td style="color:var(--blue-primary)">${s.orders}</td>
+        <td style="color:var(--success)">${(s.revenue||0).toLocaleString()} cr</td>
+      </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text-muted);text-align:center">Sin datos</td></tr>';
+
+    // Métodos de pago
+    const totalPay = d.paymentMethods.reduce((a, m) => a + m.credits, 0) || 1;
+    document.getElementById('pay-methods').innerHTML = d.paymentMethods.length
+      ? d.paymentMethods.map(m => {
+          const pct = Math.round((m.credits / totalPay) * 100);
+          const label = { paypal:'PayPal 💳', nowpayments:'Crypto ₿', stripe:'Stripe 💳', ingame:'In-game 🎮' }[m.method] || m.method;
+          return `<div class="pay-bar">
+            <div style="min-width:90px;color:#fff;font-size:.8rem;font-weight:600">${label}</div>
+            <div style="flex:1;background:rgba(255,255,255,.06);border-radius:3px;height:6px">
+              <div class="pay-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="pay-lbl" style="min-width:80px;text-align:right">${pct}% · ${(m.credits||0).toLocaleString()} cr</div>
+          </div>`;
+        }).join('')
+      : '<div style="color:var(--text-muted);font-size:.85rem">Sin datos de pagos aún</div>';
+  } catch(e) {
+    console.error('[Metrics]', e.message);
+  }
+}
+
+// Period tabs
+document.querySelectorAll('.ptab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadMetrics(btn.dataset.p);
+  });
+});
+
+loadMetrics('30d');
+</script>
+</DashLayout>

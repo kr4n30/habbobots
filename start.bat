@@ -18,7 +18,7 @@ if errorlevel 1 (
 
 :: Instala dependencias del backend si no existen
 if not exist "backend\node_modules" (
-  echo [1/2] Instalando dependencias del backend...
+  echo [INFO] Instalando dependencias del backend...
   cd backend
   call npm install
   cd ..
@@ -26,7 +26,7 @@ if not exist "backend\node_modules" (
 
 :: Instala dependencias del frontend si no existen
 if not exist "frontend\node_modules" (
-  echo [2/2] Instalando dependencias del frontend...
+  echo [INFO] Instalando dependencias del frontend...
   cd frontend
   call npm install
   cd ..
@@ -40,25 +40,46 @@ if not exist "backend\.env" (
   echo.
 )
 
-echo.
-echo  Arrancando...
-echo   Backend  ^>  http://localhost:3001
-echo   Frontend ^>  http://localhost:4321
-echo.
-echo  Cierra esta ventana para detener ambos servidores.
-echo.
-
-:: Arranca el backend en una nueva ventana
-start "HabboBots BACKEND :3001" cmd /k "cd backend && npm run dev"
-
-:: Espera 2 segundos y arranca el frontend
+:: ── Python Bot Manager (puerto 5001) ─────────────────────────────────────────
+echo [1/3] Iniciando headless_bot_manager.py (puerto 5001)...
+if exist "bot\venv\Scripts\activate.bat" (
+  start "HabboBots BOT-MANAGER :5001" cmd /k "cd bot && call venv\Scripts\activate.bat && python headless_bot_manager.py"
+) else (
+  start "HabboBots BOT-MANAGER :5001" cmd /k "cd bot && python headless_bot_manager.py"
+)
 timeout /t 2 /nobreak >nul
+
+:: ── Python Web GUI (puerto 5000) ─────────────────────────────────────────────
+echo [2/3] Iniciando web.py panel admin (puerto 5000)...
+if exist "bot\venv\Scripts\activate.bat" (
+  start "HabboBots WEB-GUI :5000" cmd /k "cd bot && call venv\Scripts\activate.bat && python web.py"
+) else (
+  start "HabboBots WEB-GUI :5000" cmd /k "cd bot && python web.py"
+)
+timeout /t 2 /nobreak >nul
+
+:: ── Node.js Backend (puerto 3001) ────────────────────────────────────────────
+echo [3/3] Iniciando Node.js backend (puerto 3001)...
+start "HabboBots BACKEND :3001" cmd /k "cd backend && npm run dev"
+timeout /t 3 /nobreak >nul
+
+:: ── Astro Frontend (puerto 4321) ─────────────────────────────────────────────
+echo [4/4] Iniciando Astro frontend (puerto 4321)...
 start "HabboBots FRONTEND :4321" cmd /k "cd frontend && npm run dev"
 
-:: Espera 4 segundos y abre el navegador
-timeout /t 4 /nobreak >nul
+:: Espera y abre el navegador
+timeout /t 5 /nobreak >nul
 start http://localhost:4321
 
-echo  Servidores corriendo. Pulsa cualquier tecla para cerrar este asistente.
-echo  (Los servidores seguiran activos en sus ventanas)
+echo.
+echo  ✅  Todos los servicios iniciados:
+echo    • Bot Manager  → http://localhost:5001
+echo    • Web GUI      → http://localhost:5000
+echo    • Backend API  → http://localhost:3001
+echo    • Frontend     → http://localhost:4321
+echo.
+echo  Para crear un admin (primera vez):
+echo    node scripts/crear-admin.js
+echo.
+echo  Los servidores corren en sus propias ventanas.
 pause >nul

@@ -1,0 +1,160 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+---
+<AuthLayout title="Verificar email">
+  <style>
+    .verify-page {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem;
+    }
+    .verify-card {
+      width: 100%; max-width: 480px;
+      background: #0d1428;
+      border: 1px solid rgba(0,195,255,.18);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(0,195,255,.1), 4px 4px 0 rgba(0,0,0,.5);
+    }
+    .verify-titlebar {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .6rem 1rem;
+      background: linear-gradient(90deg,#0a3a6e,#1a1650);
+      border-bottom: 2px solid #000;
+    }
+    .verify-titlebar span {
+      font-family: 'Orbitron', sans-serif;
+      font-size: .85rem; font-weight: 700;
+      color: #00c3ff; letter-spacing: 1.5px;
+    }
+    .verify-body {
+      padding: 2.5rem 2rem;
+      text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+    }
+    .status-icon {
+      width: 72px; height: 72px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .status-icon.loading { background: rgba(0,195,255,.1); border: 2px solid rgba(0,195,255,.3); }
+    .status-icon.success { background: rgba(0,195,255,.12); border: 2px solid rgba(0,195,255,.4); }
+    .status-icon.error   { background: rgba(255,60,60,.1);  border: 2px solid rgba(255,60,60,.3); }
+
+    .status-title { font-size: 1.3rem; font-weight: 700; color: #fff; margin: 0; }
+    .status-msg   { font-size: .88rem; color: var(--text-muted); margin: 0; line-height: 1.6; max-width: 340px; }
+
+    .spinner {
+      width: 30px; height: 30px;
+      border: 3px solid rgba(0,195,255,.2);
+      border-top-color: #00c3ff;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .65rem 1.5rem;
+      background: linear-gradient(135deg,#9b30ff,#6010cc);
+      border: 2px solid #000; border-radius: 8px;
+      color: #fff; font-size: .95rem; font-weight: 700;
+      text-decoration: none; cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-primary:hover { box-shadow: 0 0 16px rgba(155,48,255,.4); }
+    .btn-secondary {
+      font-size: .82rem; color: var(--blue-primary);
+      background: none; border: none; cursor: pointer; text-decoration: underline;
+    }
+  </style>
+
+  <div class="verify-page">
+    <div class="verify-card">
+      <div class="verify-titlebar">
+        <img src="/assets/images/logo.gif" alt="HB" style="width:22px;height:22px;border-radius:4px;object-fit:contain;" />
+        <span>HABBOBOTS — Verificación de email</span>
+      </div>
+      <div class="verify-body" id="verify-body">
+        <!-- Loading -->
+        <div class="status-icon loading">
+          <div class="spinner"></div>
+        </div>
+        <p class="status-title">Verificando...</p>
+        <p class="status-msg">Espera un momento.</p>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline src="/js/api.js"></script>
+  <script is:inline>
+    const params  = new URLSearchParams(window.location.search);
+    const token   = params.get('token');
+    const success = params.get('success');
+
+    const body = document.getElementById('verify-body');
+
+    function showSuccess() {
+      body.innerHTML = `
+        <div class="status-icon success">
+          <svg width="32" height="32" fill="none" stroke="#00c3ff" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <p class="status-title">¡Email verificado!</p>
+        <p class="status-msg">Tu cuenta está activa. Ya puedes iniciar sesión y empezar a usar HabboBots.</p>
+        <a href="/" class="btn-primary">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Iniciar sesión
+        </a>`;
+    }
+
+    function showError(msg) {
+      body.innerHTML = `
+        <div class="status-icon error">
+          <svg width="30" height="30" fill="none" stroke="#ff4444" stroke-width="2.5" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <p class="status-title">Enlace inválido</p>
+        <p class="status-msg">${msg || 'El enlace ya fue usado o expiró. Solicita uno nuevo.'}</p>
+        <a href="/" class="btn-primary">Volver al inicio</a>
+        <button class="btn-secondary" onclick="document.getElementById('resend-form').style.display='block'; this.remove()">
+          Solicitar nuevo enlace de verificación
+        </button>
+        <div id="resend-form" style="display:none;width:100%;max-width:300px;">
+          <input type="email" id="resend-email" class="form-input" placeholder="tu@email.com" style="margin-bottom:.5rem;" />
+          <button class="btn-primary" style="width:100%;justify-content:center;" onclick="doResend()">Enviar</button>
+        </div>`;
+    }
+
+    async function doResend() {
+      const email = document.getElementById('resend-email')?.value?.trim();
+      if (!email) { alert('Escribe tu email'); return; }
+      try {
+        await AuthAPI.resendEmail(email);
+        document.getElementById('resend-form').innerHTML =
+          '<p style="color:#00c3ff;font-size:.85rem;">Email enviado. Revisa tu bandeja de entrada.</p>';
+      } catch (err) {
+        alert(err.message || 'Error al enviar');
+      }
+    }
+
+    // Backend redirige aquí con ?success=1 tras verificar
+    if (success === '1') {
+      showSuccess();
+    } else if (token) {
+      // El backend ya procesa el token y redirige con ?success=1
+      // Pero si por alguna razón llegamos aquí con token directamente:
+      fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`)
+        .then(r => {
+          if (r.redirected || r.ok) { showSuccess(); }
+          else return r.json().then(d => { throw new Error(d.error || 'Token inválido'); });
+        })
+        .catch(err => showError(err.message));
+    } else {
+      showError('No se proporcionó ningún token de verificación.');
+    }
+  </script>
+</AuthLayout>

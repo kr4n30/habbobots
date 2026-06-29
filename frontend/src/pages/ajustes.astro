@@ -1,0 +1,239 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Ajustes" activePage="ajustes">
+  <style>
+    .settings-card {
+      background: var(--bg-card); border: 1px solid var(--border-glow);
+      border-radius: 14px; padding: 1.5rem; margin-bottom: 1.25rem;
+    }
+    .settings-card h2 {
+      font-family: 'Orbitron', sans-serif; font-size: .9rem; font-weight: 700;
+      margin: 0 0 1.1rem; display: flex; align-items: center; gap: .5rem;
+    }
+    .step-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(0,195,255,.15); border: 1px solid rgba(0,195,255,.3);
+      font-size: .72rem; font-weight: 700; color: var(--blue-primary); flex-shrink: 0;
+    }
+    .code-input {
+      letter-spacing: .35em; font-size: 1.35rem; text-align: center;
+      font-family: 'Orbitron', monospace; width: 100%; max-width: 220px;
+    }
+    #qr-img { border-radius: 8px; border: 3px solid rgba(0,195,255,.15); }
+    .totp-status-on  { background:rgba(0,255,163,.1); border:1px solid rgba(0,255,163,.25); color:var(--success); }
+    .totp-status-off { background:rgba(100,100,150,.1); border:1px solid rgba(100,100,150,.25); color:var(--text-muted); }
+    .totp-status {
+      display:inline-flex; align-items:center; gap:.4rem;
+      padding:.3rem .85rem; border-radius:50px; font-size:.78rem; font-weight:700;
+    }
+  </style>
+
+  <div style="margin-bottom:1.75rem;">
+    <h1 style="font-family:'Orbitron',sans-serif;font-size:1.25rem;font-weight:700;">⚙️ Ajustes</h1>
+    <p style="color:var(--text-muted);font-size:.86rem;margin-top:.2rem;">Configuración de seguridad y preferencias de tu cuenta.</p>
+  </div>
+
+  <!-- ── 2FA ──────────────────────────────────────────────────── -->
+  <div class="settings-card">
+    <h2>🔐 Autenticación en dos pasos (2FA)</h2>
+
+    <!-- Estado actual -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.25rem;">
+      <div>
+        <p style="font-size:.88rem;color:var(--text-secondary);margin:0 0 .35rem;">
+          Añade una capa extra de seguridad usando una app de autenticación (Google Authenticator, Aegis, Authy…).
+        </p>
+        <span class="totp-status totp-status-off" id="totp-status-badge">
+          <span id="totp-status-dot">●</span> <span id="totp-status-text">Cargando…</span>
+        </span>
+      </div>
+      <button class="btn btn-primary" id="totp-toggle-btn" onclick="toggle2FA()" style="min-width:140px;">–</button>
+    </div>
+
+    <!-- Panel de configuración (visible al activar) -->
+    <div id="totp-setup-panel" style="display:none;">
+      <hr style="border:none;border-top:1px solid rgba(255,255,255,.06);margin:1rem 0;" />
+
+      <div style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:flex-start;">
+        <!-- QR code -->
+        <div style="flex-shrink:0;text-align:center;">
+          <img id="qr-img" src="" alt="QR Code" width="160" height="160" style="display:none;" />
+          <div id="qr-loading" style="width:160px;height:160px;background:rgba(0,195,255,.05);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:.8rem;">Generando…</div>
+        </div>
+
+        <!-- Instrucciones -->
+        <div style="flex:1;min-width:220px;">
+          <p style="font-size:.85rem;margin:0 0 .75rem;color:var(--text-secondary);">
+            <span class="step-num">1</span>&nbsp;
+            Escanea el código QR con tu app de autenticación o introduce el secreto manualmente.
+          </p>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;">
+            <code id="totp-secret" style="font-size:.78rem;background:rgba(0,0,0,.3);padding:.4rem .7rem;border-radius:6px;color:var(--blue-primary);letter-spacing:.08em;flex:1;word-break:break-all;"></code>
+            <button onclick="copySecret()" title="Copiar" style="background:none;border:1px solid rgba(0,195,255,.2);border-radius:6px;padding:.3rem .5rem;cursor:pointer;color:var(--text-secondary);font-size:.75rem;">Copiar</button>
+          </div>
+          <p style="font-size:.85rem;margin:0 0 .75rem;color:var(--text-secondary);">
+            <span class="step-num">2</span>&nbsp;
+            Introduce el código de 6 dígitos que muestra la app para verificar.
+          </p>
+          <div style="display:flex;gap:.5rem;align-items:center;">
+            <input type="text" id="totp-code-input" class="form-input code-input"
+                   maxlength="6" inputmode="numeric" placeholder="000000"
+                   oninput="this.value=this.value.replace(/\D/g,'')" />
+            <button class="btn btn-primary" onclick="verifyTOTP()" style="white-space:nowrap;">Verificar y activar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de desactivación -->
+    <div id="totp-disable-panel" style="display:none;">
+      <hr style="border:none;border-top:1px solid rgba(255,255,255,.06);margin:1rem 0;" />
+      <p style="font-size:.85rem;color:var(--text-secondary);margin:0 0 .75rem;">
+        Introduce el código actual de tu app para desactivar 2FA.
+      </p>
+      <div style="display:flex;gap:.5rem;align-items:center;">
+        <input type="text" id="totp-disable-input" class="form-input code-input"
+               maxlength="6" inputmode="numeric" placeholder="000000"
+               oninput="this.value=this.value.replace(/\D/g,'')" />
+        <button class="btn" onclick="disableTOTP()" style="background:rgba(255,70,70,.1);border:1px solid rgba(255,70,70,.25);color:var(--danger);white-space:nowrap;">
+          Desactivar 2FA
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Contraseña ──────────────────────────────────────────── -->
+  <div class="settings-card">
+    <h2>🔑 Cambiar contraseña</h2>
+    <div style="max-width:420px;display:flex;flex-direction:column;gap:.75rem;">
+      <div>
+        <label class="form-label">Contraseña actual</label>
+        <input type="password" id="pw-current" class="form-input" placeholder="••••••••" />
+      </div>
+      <div>
+        <label class="form-label">Nueva contraseña</label>
+        <input type="password" id="pw-new" class="form-input" placeholder="Mínimo 8 caracteres" />
+      </div>
+      <div>
+        <label class="form-label">Confirmar nueva contraseña</label>
+        <input type="password" id="pw-confirm" class="form-input" placeholder="Repite la nueva contraseña" />
+      </div>
+      <button class="btn btn-primary" style="align-self:flex-start;" onclick="changePassword()">Actualizar contraseña</button>
+    </div>
+  </div>
+
+  <script is:inline src="/js/api.js"></script>
+  <script is:inline>
+    if (!Auth.isLoggedIn()) window.location.href = '/';
+
+    let _2faEnabled = false;
+
+    // ── Cargar estado 2FA ──────────────────────────────────────
+    (async () => {
+      try {
+        const { enabled } = await UsersAPI.totpStatus();
+        _2faEnabled = enabled;
+        update2FAStatus(enabled);
+      } catch { update2FAStatus(false); }
+    })();
+
+    function update2FAStatus(enabled) {
+      _2faEnabled = enabled;
+      const badge = document.getElementById('totp-status-badge');
+      const text  = document.getElementById('totp-status-text');
+      const btn   = document.getElementById('totp-toggle-btn');
+
+      badge.className = 'totp-status ' + (enabled ? 'totp-status-on' : 'totp-status-off');
+      text.textContent = enabled ? 'Activado' : 'Desactivado';
+      btn.textContent  = enabled ? 'Desactivar 2FA' : 'Activar 2FA';
+      btn.className    = enabled ? 'btn' : 'btn btn-primary';
+      if (enabled) btn.style.cssText = 'min-width:140px;background:rgba(255,70,70,.1);border:1px solid rgba(255,70,70,.25);color:var(--danger);';
+      else btn.style.cssText = 'min-width:140px;';
+
+      document.getElementById('totp-setup-panel').style.display   = 'none';
+      document.getElementById('totp-disable-panel').style.display  = 'none';
+    }
+
+    // ── Toggle ─────────────────────────────────────────────────
+    async function toggle2FA() {
+      if (_2faEnabled) {
+        document.getElementById('totp-setup-panel').style.display   = 'none';
+        document.getElementById('totp-disable-panel').style.display = 'block';
+        document.getElementById('totp-disable-input').focus();
+      } else {
+        await startSetup2FA();
+      }
+    }
+
+    // ── Setup: pedir QR ────────────────────────────────────────
+    async function startSetup2FA() {
+      document.getElementById('totp-setup-panel').style.display   = 'block';
+      document.getElementById('totp-disable-panel').style.display = 'none';
+      document.getElementById('qr-loading').style.display  = 'flex';
+      document.getElementById('qr-img').style.display      = 'none';
+      document.getElementById('totp-code-input').value     = '';
+      document.getElementById('totp-secret').textContent   = '';
+      try {
+        const { secret, qrDataUrl } = await UsersAPI.totpSetup();
+        document.getElementById('totp-secret').textContent = secret;
+        const img = document.getElementById('qr-img');
+        img.src = qrDataUrl;
+        img.style.display = 'block';
+        document.getElementById('qr-loading').style.display = 'none';
+        document.getElementById('totp-code-input').focus();
+      } catch (e) {
+        showToast(e.message, 'danger');
+        document.getElementById('totp-setup-panel').style.display = 'none';
+      }
+    }
+
+    // ── Verificar código ───────────────────────────────────────
+    async function verifyTOTP() {
+      const code = document.getElementById('totp-code-input').value.trim();
+      if (code.length !== 6) { showToast('Introduce los 6 dígitos', 'warning'); return; }
+      try {
+        await UsersAPI.totpVerify(code);
+        showToast('✅ 2FA activado correctamente', 'success');
+        update2FAStatus(true);
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    // ── Desactivar ─────────────────────────────────────────────
+    async function disableTOTP() {
+      const code = document.getElementById('totp-disable-input').value.trim();
+      if (code.length !== 6) { showToast('Introduce los 6 dígitos', 'warning'); return; }
+      if (!confirm('¿Seguro que quieres desactivar 2FA?')) return;
+      try {
+        await UsersAPI.totpDisable(code);
+        showToast('2FA desactivado', 'success');
+        update2FAStatus(false);
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    // ── Copiar secreto ─────────────────────────────────────────
+    function copySecret() {
+      const s = document.getElementById('totp-secret').textContent;
+      if (!s) return;
+      navigator.clipboard.writeText(s).then(() => showToast('Copiado', 'success'));
+    }
+
+    // ── Cambiar contraseña ─────────────────────────────────────
+    async function changePassword() {
+      const currentPassword = document.getElementById('pw-current').value;
+      const newPassword     = document.getElementById('pw-new').value;
+      const confirm         = document.getElementById('pw-confirm').value;
+      if (!currentPassword || !newPassword) { showToast('Rellena todos los campos', 'warning'); return; }
+      if (newPassword !== confirm) { showToast('Las contraseñas no coinciden', 'danger'); return; }
+      if (newPassword.length < 8) { showToast('Mínimo 8 caracteres', 'warning'); return; }
+      try {
+        await UsersAPI.update({ currentPassword, newPassword });
+        showToast('Contraseña actualizada', 'success');
+        document.getElementById('pw-current').value = '';
+        document.getElementById('pw-new').value     = '';
+        document.getElementById('pw-confirm').value = '';
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+  </script>
+</DashLayout>

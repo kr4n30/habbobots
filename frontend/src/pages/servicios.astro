@@ -1,0 +1,546 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Servicios" activePage="servicios">
+  <style>
+    /* ── Header ─────────────────────────────────── */
+    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; }
+    .page-header h1 { font-family:'Orbitron',sans-serif; font-size:1.25rem; font-weight:700; }
+    .page-header p  { color:var(--text-muted); font-size:.85rem; margin-top:.2rem; }
+
+    /* ── Tabs ────────────────────────────────────── */
+    .main-tabs { display:flex; gap:.25rem; margin-bottom:1.75rem; border-bottom:1px solid rgba(0,195,255,.12); }
+    .main-tab {
+      padding:.55rem 1.25rem; background:none; border:none; border-bottom:2px solid transparent;
+      color:var(--text-muted); font-size:.88rem; font-weight:600; cursor:pointer; transition:.15s;
+    }
+    .main-tab.active { color:var(--blue-primary); border-bottom-color:var(--blue-primary); }
+    .main-tab:hover:not(.active) { color:var(--text-primary); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    /* ── Active services ─────────────────────────── */
+    .active-grid {
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:1rem;
+      margin-bottom:1.5rem;
+    }
+    .active-card { display:flex; flex-direction:column; position:relative; overflow:hidden; }
+    .active-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+      background:var(--gradient-main);
+    }
+    .active-card-body { padding:1.1rem; flex:1; }
+    .active-type-badge {
+      display:inline-block; padding:.2rem .55rem; border-radius:4px;
+      font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:.6rem;
+    }
+    .active-card-name { font-weight:700; font-size:.95rem; margin-bottom:.2rem; }
+    .active-card-sub  { font-size:.78rem; color:var(--text-muted); margin-bottom:.85rem; }
+    .active-progress  { height:4px; background:rgba(255,255,255,.06); border-radius:2px; margin-bottom:.5rem; }
+    .active-progress-bar { height:100%; border-radius:2px; background:var(--gradient-main); transition:width .5s; }
+    .active-card-footer { padding:.75rem 1.1rem; border-top:1px solid rgba(255,255,255,.05); display:flex; gap:.5rem; align-items:center; }
+
+    /* ── Service catalog ─────────────────────────── */
+    .services-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1.25rem; }
+    .service-card  { display:flex; flex-direction:column; transition:transform .2s; }
+    .service-card:hover { transform:translateY(-3px); }
+    .service-icon  { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; margin-bottom:.75rem; }
+    .service-name  { font-weight:700; font-size:.95rem; margin-bottom:.25rem; }
+    .service-desc  { font-size:.8rem; color:var(--text-muted); flex:1; line-height:1.5; margin-bottom:1rem; }
+    .service-price { display:flex; align-items:baseline; gap:.35rem; font-family:'Orbitron',sans-serif; font-size:1.4rem; font-weight:800; margin-bottom:.15rem; }
+    .service-price-label { font-size:.75rem; color:var(--text-muted); margin-bottom:1rem; }
+    .service-tag   { display:inline-block; padding:.15rem .55rem; border-radius:4px; font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-bottom:.75rem; }
+    .tag-badge_respect { background:rgba(0,128,255,.15); color:var(--blue-primary); }
+    .tag-badge_pet     { background:rgba(0,200,100,.15); color:#00c864; }
+    .tag-room_fill     { background:rgba(155,48,255,.15); color:var(--purple-primary); }
+    .tag-raid          { background:rgba(255,60,60,.15);  color:var(--danger); }
+    .tag-trade         { background:rgba(255,180,0,.15);  color:var(--warning); }
+    .tag-custom        { background:rgba(255,255,255,.08); color:var(--text-secondary); }
+
+    /* ── Filter tabs ─────────────────────────────── */
+    .filter-tabs { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.25rem; }
+    .filter-tab  { padding:.3rem .8rem; border-radius:20px; border:1px solid var(--border-glow); background:transparent; color:var(--text-secondary); font-size:.78rem; cursor:pointer; transition:.2s; }
+    .filter-tab.active, .filter-tab:hover { background:var(--gradient-main); color:#fff; border-color:transparent; }
+
+    /* ── Order modal form ────────────────────────── */
+    .order-form label { font-size:.82rem; color:var(--text-muted); display:block; margin-bottom:.25rem; }
+    .order-form select, .order-form input, .order-form textarea {
+      width:100%; padding:.5rem .75rem; margin-bottom:.9rem;
+      background:rgba(255,255,255,.05); border:1px solid var(--border-glow);
+      border-radius:6px; color:var(--text-primary); font-size:.84rem;
+      outline:none; box-sizing:border-box;
+    }
+    .order-form select:focus, .order-form input:focus { border-color:var(--blue-primary); }
+
+    /* ── Order history rows ──────────────────────── */
+    .order-row { display:flex; align-items:center; gap:.85rem; padding:.7rem 0; border-bottom:1px solid rgba(255,255,255,.04); font-size:.83rem; }
+    .order-row:last-child { border-bottom:none; }
+    .order-status { padding:.18rem .5rem; border-radius:4px; font-size:.68rem; font-weight:700; text-transform:uppercase; flex-shrink:0; }
+    .status-pending   { background:rgba(255,180,0,.15);  color:var(--warning); }
+    .status-active    { background:rgba(0,128,255,.15);  color:var(--blue-primary); }
+    .status-completed { background:rgba(0,200,100,.15);  color:#00c864; }
+    .status-cancelled { background:rgba(255,255,255,.08); color:var(--text-muted); }
+    .status-failed    { background:rgba(255,60,60,.15);  color:var(--danger); }
+
+    /* ── Counters badge ──────────────────────────── */
+    .tab-badge { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--blue-primary); color:#000; font-size:.62rem; font-weight:800; margin-left:.35rem; }
+
+    @media (max-width:600px) { .services-grid,.active-grid { grid-template-columns:1fr; } }
+  </style>
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1>Servicios</h1>
+      <p>Gasta tus créditos en servicios para tu personaje de Habbo</p>
+    </div>
+    <div style="display:flex;gap:.75rem;align-items:center;">
+      <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .9rem;background:rgba(155,48,255,.12);border:1px solid rgba(155,48,255,.25);border-radius:50px;font-size:.82rem;color:var(--purple-primary);font-weight:600;">
+        💎 Saldo: <strong id="saldo-display">—</strong> cr
+      </div>
+      <a href="/tienda" class="hb-btn hb-btn-ghost" style="font-size:.8rem;padding:.4rem .85rem;">+ Comprar créditos</a>
+    </div>
+  </div>
+
+  <!-- Main tabs -->
+  <div class="main-tabs">
+    <button class="main-tab active" onclick="switchMainTab('disponibles',this)">🛒 Disponibles</button>
+    <button class="main-tab" onclick="switchMainTab('mis-servicios',this)">
+      📦 Mis servicios<span class="tab-badge" id="active-badge" style="display:none">0</span>
+    </button>
+    <button class="main-tab" onclick="switchMainTab('historial',this)">📋 Historial</button>
+  </div>
+
+  <!-- ════════════════════════════════════════ TAB: Disponibles ═════════════════ -->
+  <div class="tab-panel active" id="panel-disponibles">
+    <!-- Hotel filter -->
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.15rem;flex-wrap:wrap;">
+      <span style="font-size:.82rem;color:var(--text-muted);">Hotel:</span>
+      <div class="filter-tabs" id="hotel-tabs">
+        <button class="filter-tab active" onclick="filterHotel('all',this)">Todos</button>
+        <button class="filter-tab" onclick="filterHotel('es',this)">habbo.es</button>
+        <button class="filter-tab" onclick="filterHotel('com',this)">habbo.com</button>
+        <button class="filter-tab" onclick="filterHotel('com.br',this)">habbo.com.br</button>
+        <button class="filter-tab" onclick="filterHotel('de',this)">habbo.de</button>
+        <button class="filter-tab" onclick="filterHotel('tr',this)">habbo.com.tr</button>
+      </div>
+    </div>
+    <div id="services-grid" class="services-grid">
+      <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted);">Cargando servicios…</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════ TAB: Mis servicios ══════════════ -->
+  <div class="tab-panel" id="panel-mis-servicios">
+    <div id="active-services-grid" class="active-grid">
+      <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted);">Cargando servicios activos…</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════ TAB: Historial ══════════════════ -->
+  <div class="tab-panel" id="panel-historial">
+    <div class="hb-window">
+      <div class="hb-window-title">
+        <h3>Historial de pedidos</h3>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+          <select id="order-status-filter" onchange="loadOrders()" style="background:rgba(255,255,255,.05);border:1px solid var(--border-glow);border-radius:6px;color:#fff;font-size:.78rem;padding:.25rem .5rem;cursor:pointer;">
+            <option value="">Todos</option>
+            <option value="pending">Pendientes</option>
+            <option value="active">Activos</option>
+            <option value="completed">Completados</option>
+            <option value="cancelled">Cancelados</option>
+          </select>
+          <button class="hb-btn hb-btn-ghost" onclick="loadOrders()" style="font-size:.75rem;padding:.25rem .65rem;">↺</button>
+        </div>
+      </div>
+      <div class="hb-window-body" id="orders-list">
+        <p style="color:var(--text-muted);font-size:.84rem;">Cargando…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ MODAL: contratar servicio ════════ -->
+  <div class="hb-overlay hidden" id="order-modal">
+    <div class="hb-alert hb-alert-purple" style="max-width:460px;width:100%;">
+      <div class="hb-window-title">
+        <h3 id="modal-title">Contratar servicio</h3>
+        <span class="hb-close" onclick="closeOrderModal()">✕</span>
+      </div>
+      <div class="hb-alert-body" style="max-height:70vh;overflow-y:auto;">
+        <p id="modal-desc" style="font-size:.84rem;color:var(--text-muted);margin-bottom:.75rem;"></p>
+        <div class="order-form">
+          <label>Hotel</label>
+          <select id="order-hotel" onchange="onHotelChange()">
+            <option value="es">habbo.es</option>
+            <option value="com">habbo.com</option>
+            <option value="com.br">habbo.com.br</option>
+            <option value="de">habbo.de</option>
+            <option value="fi">habbo.fi</option>
+            <option value="it">habbo.it</option>
+            <option value="nl">habbo.nl</option>
+            <option value="tr">habbo.com.tr</option>
+            <option value="fr">habbo.fr</option>
+          </select>
+          <label>Tu personaje Habbo</label>
+          <select id="order-habbo-name">
+            <option value="">— Selecciona tu personaje —</option>
+          </select>
+          <div id="room-id-group" style="display:none;">
+            <label>ID de sala <span style="color:var(--text-muted);font-weight:400;">(número en URL de Habbo)</span></label>
+            <input type="number" id="order-room-id" placeholder="ej. 73829104" min="1" onchange="recalcPrice()" />
+          </div>
+          <div id="bot-count-group" style="display:none;">
+            <label>Cantidad de bots: <strong id="bot-count-val">10</strong></label>
+            <input type="range" id="order-bot-count" min="1" max="50" value="10" step="1"
+                   style="width:100%;accent-color:var(--blue-primary);margin-bottom:.4rem;"
+                   oninput="document.getElementById('bot-count-val').textContent=this.value;recalcPrice()" />
+            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);margin-bottom:.8rem;">
+              <span>1</span><span>50</span>
+            </div>
+          </div>
+          <div id="duration-group" style="display:none;">
+            <label>Duración</label>
+            <select id="order-duration" onchange="recalcPrice()">
+              <option value="3600">1 hora</option>
+              <option value="10800">3 horas</option>
+              <option value="21600">6 horas</option>
+              <option value="43200">12 horas</option>
+              <option value="86400">24 horas</option>
+            </select>
+          </div>
+          <label id="notes-label" style="display:none;">Notas adicionales</label>
+          <textarea id="order-notes" rows="2" placeholder="Instrucciones opcionales…" style="display:none;"></textarea>
+        </div>
+        <!-- Resumen -->
+        <div style="padding:.75rem;background:rgba(155,48,255,.08);border:1px solid rgba(155,48,255,.2);border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:.82rem;color:var(--text-muted);">💎 Precio total:</span>
+            <span id="modal-price" style="font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:700;color:var(--blue-primary);">—</span>
+          </div>
+          <div id="price-breakdown" style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem;"></div>
+          <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem;">
+            Tu saldo: <strong id="modal-balance">—</strong> cr
+            <span id="balance-after" style="margin-left:.5rem;"></span>
+          </div>
+        </div>
+        <p style="font-size:.73rem;color:var(--text-muted);margin-top:.6rem;">
+          ⚠️ Los créditos se descuentan al confirmar. Si el servicio falla, recibirás un reembolso automático.
+        </p>
+      </div>
+      <div class="hb-alert-footer">
+        <button class="hb-btn hb-btn-ghost" onclick="closeOrderModal()">Cancelar</button>
+        <button class="hb-btn hb-btn-purple" id="confirm-order-btn" onclick="confirmOrder()">
+          💎 Contratar ahora
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline slot="scripts">
+    const TYPE_LABELS = { badge_respect:'Respetos', badge_pet:'Mascota', room_fill:'Llenar sala', raid:'Raid', trade:'Trade', custom:'Custom' };
+    const TYPE_ICONS  = { badge_respect:'👏', badge_pet:'🐾', room_fill:'🏨', raid:'⚡', trade:'🔄', custom:'⚙️' };
+    const STATUS_LABELS = { pending:'Pendiente', active:'Activo', completed:'Completado', cancelled:'Cancelado', failed:'Fallido' };
+    const TYPE_COLORS = {
+      badge_respect:'rgba(0,128,255,.15)',  badge_pet:'rgba(0,200,100,.15)',
+      room_fill:'rgba(155,48,255,.15)',     raid:'rgba(255,60,60,.15)',
+      trade:'rgba(255,180,0,.15)',          custom:'rgba(255,255,255,.08)',
+    };
+    const TYPE_TEXT = {
+      badge_respect:'var(--blue-primary)', badge_pet:'#00c864',
+      room_fill:'var(--purple-primary)',   raid:'var(--danger)',
+      trade:'var(--warning)',              custom:'var(--text-secondary)',
+    };
+
+    let allProducts = [], myAccounts = [], currentHotel = 'all', _credits = 0;
+    let selectedProductId = null, selectedProduct = null;
+
+    // ── Init ────────────────────────────────────────
+    (async () => {
+      try {
+        const [{ credits }, { accounts }, { products }] = await Promise.all([
+          CreditsAPI.balance(), HabboAPI.accounts(), ProductsAPI.list(),
+        ]);
+        _credits = credits;
+        document.getElementById('saldo-display').textContent = credits.toLocaleString();
+        myAccounts  = accounts || [];
+        allProducts = products || [];
+        renderProducts(allProducts);
+        loadActiveServices();
+        loadOrders();
+      } catch (err) {
+        document.getElementById('services-grid').innerHTML =
+          `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--danger);">Error: ${err.message}</div>`;
+      }
+    })();
+
+    // ── Tab switching ───────────────────────────────
+    function switchMainTab(name, btn) {
+      document.querySelectorAll('.main-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + name).classList.add('active');
+      if (name === 'mis-servicios') loadActiveServices();
+      if (name === 'historial')     loadOrders();
+    }
+
+    // ── Render catalog ──────────────────────────────
+    function renderProducts(list) {
+      const grid = document.getElementById('services-grid');
+      if (!list.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">No hay servicios para este filtro.</div>';
+        return;
+      }
+      grid.innerHTML = list.map(p => {
+        const icon  = TYPE_ICONS[p.type]  || '⚙️';
+        const label = TYPE_LABELS[p.type] || p.type;
+        const dur   = p.duration ? formatDuration(p.duration) : null;
+        return `
+        <div class="hb-window service-card">
+          <div class="hb-window-body" style="padding:1.25rem;display:flex;flex-direction:column;flex:1;">
+            <div class="service-icon" style="background:${TYPE_COLORS[p.type]||'rgba(0,128,255,.1)'};">${icon}</div>
+            <span class="service-tag tag-${p.type}">${label}</span>
+            <div class="service-name">${p.name}</div>
+            <div class="service-desc">${p.description || ''}</div>
+            ${dur ? `<div style="font-size:.74rem;color:var(--text-muted);margin-bottom:.75rem;">⏱️ Duración: ${dur}</div>` : ''}
+            ${p.max_quantity ? `<div style="font-size:.74rem;color:var(--text-muted);margin-bottom:.75rem;">🔒 Máx. ${p.max_quantity}</div>` : ''}
+            <div style="margin-top:auto;">
+              <div class="service-price"><span class="neon-blue">${p.price}</span><span style="font-size:.7rem;color:var(--text-muted);font-family:'Inter',sans-serif;">créditos</span></div>
+              <button class="hb-btn hb-btn-purple" style="width:100%;justify-content:center;margin-top:.75rem;" onclick="openOrderModal('${p.id}')">
+                💎 Contratar
+              </button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function formatDuration(s) {
+      if (s >= 3600) return `${s/3600}h`;
+      if (s >= 60)   return `${Math.round(s/60)} min`;
+      return `${s}s`;
+    }
+
+    function filterHotel(hotel, btn) {
+      currentHotel = hotel;
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      const filtered = hotel === 'all' ? allProducts : allProducts.filter(p => !p.hotel || p.hotel === hotel);
+      renderProducts(filtered);
+    }
+
+    // ── Mis servicios activos ───────────────────────
+    async function loadActiveServices() {
+      const grid = document.getElementById('active-services-grid');
+      const badge = document.getElementById('active-badge');
+      try {
+        const { orders } = await ProductsAPI.myOrders();
+        const active = orders.filter(o => o.status === 'active' || o.status === 'pending');
+
+        badge.textContent = active.length;
+        badge.style.display = active.length ? 'inline-flex' : 'none';
+
+        if (!active.length) {
+          grid.innerHTML = `
+            <div style="grid-column:1/-1;text-align:center;padding:3rem;">
+              <div style="font-size:2.5rem;margin-bottom:.75rem;">📭</div>
+              <div style="color:var(--text-muted);font-size:.88rem;">No tienes servicios activos en este momento.</div>
+              <button class="hb-btn hb-btn-purple" style="margin-top:1rem;" onclick="switchMainTab('disponibles',document.querySelector('.main-tab'))">
+                Ver servicios disponibles
+              </button>
+            </div>`;
+          return;
+        }
+
+        grid.innerHTML = active.map(o => {
+          const icon   = TYPE_ICONS[o.product_type]  || '⚙️';
+          const label  = TYPE_LABELS[o.product_type] || o.product_type;
+          const color  = TYPE_COLORS[o.product_type] || 'rgba(0,128,255,.15)';
+          const tcolor = TYPE_TEXT[o.product_type]   || 'var(--blue-primary)';
+          const date   = new Date(o.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
+
+          // Progreso temporal
+          let progressPct = 0, timeLeft = '';
+          if (o.ends_at) {
+            const total = new Date(o.ends_at) - new Date(o.created_at);
+            const elapsed = Date.now() - new Date(o.created_at);
+            progressPct = Math.max(0, Math.min(100, (elapsed / total) * 100));
+            const ms = new Date(o.ends_at) - Date.now();
+            if (ms > 0) {
+              const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000);
+              timeLeft = h > 0 ? `${h}h ${m}m restantes` : `${m}m restantes`;
+            } else {
+              timeLeft = 'Finalizando…';
+            }
+          }
+
+          const canGoToService = o.product_type === 'room_fill' || o.product_type === 'raid';
+          const goBtn = canGoToService && o.room_id
+            ? `<a href="https://habbo.${o.hotel}/room/${o.room_id}" target="_blank" class="hb-btn hb-btn-purple" style="font-size:.75rem;padding:.3rem .75rem;">🔗 Ir a la sala</a>`
+            : '';
+          const statusPill = o.status === 'active'
+            ? `<span style="background:rgba(0,128,255,.15);color:var(--blue-primary);padding:.15rem .5rem;border-radius:4px;font-size:.68rem;font-weight:700;">● ACTIVO</span>`
+            : `<span style="background:rgba(255,180,0,.15);color:var(--warning);padding:.15rem .5rem;border-radius:4px;font-size:.68rem;font-weight:700;">⏳ PENDIENTE</span>`;
+
+          return `
+          <div class="hb-window active-card">
+            <div class="active-card-body">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.6rem;">
+                <div>
+                  <div style="display:inline-block;padding:.2rem .55rem;border-radius:4px;font-size:.68rem;font-weight:700;background:${color};color:${tcolor};margin-bottom:.4rem;">${icon} ${label}</div>
+                  <div class="active-card-name">${o.product_name}</div>
+                  <div class="active-card-sub">${o.habbo_name} · habbo.${o.hotel} · ${date}</div>
+                </div>
+                ${statusPill}
+              </div>
+              ${o.bot_count ? `<div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.5rem;">🤖 ${o.bot_count} bots${o.room_id?` · Sala #${o.room_id}`:''}</div>` : ''}
+              ${o.ends_at ? `
+                <div class="active-progress"><div class="active-progress-bar" style="width:${progressPct.toFixed(1)}%"></div></div>
+                <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:.25rem;">${timeLeft}</div>` : ''}
+              <div style="font-size:.73rem;color:var(--danger);">−${o.credits_paid} 💎</div>
+            </div>
+            <div class="active-card-footer">
+              ${goBtn}
+              <button class="hb-btn hb-btn-ghost" style="font-size:.72rem;padding:.25rem .6rem;" onclick="openTicketForOrder('${o.id}','${(o.product_name||'').replace(/'/g,"\\'")}')">🎫 Soporte</button>
+            </div>
+          </div>`;
+        }).join('');
+      } catch (err) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--danger);">Error: ${err.message}</div>`;
+      }
+    }
+
+    // ── Order modal ─────────────────────────────────
+    function recalcPrice() {
+      if (!selectedProduct) return;
+      const p = selectedProduct;
+      let price = p.price, breakdown = '';
+      if (['room_fill','raid'].includes(p.type)) {
+        const bots = parseInt(document.getElementById('order-bot-count')?.value || 1);
+        const dur  = parseInt(document.getElementById('order-duration')?.value  || 3600);
+        const hours = Math.ceil(dur / 3600);
+        price = bots * hours * p.price;
+        breakdown = `${bots} bots × ${hours}h × ${p.price} cr/bot·h`;
+      }
+      document.getElementById('modal-price').textContent    = price + ' cr';
+      document.getElementById('price-breakdown').textContent = breakdown;
+      document.getElementById('modal-balance').textContent   = _credits;
+      const after = _credits - price;
+      const afterEl = document.getElementById('balance-after');
+      afterEl.textContent = `→ ${after} cr`;
+      afterEl.style.color = after < 0 ? 'var(--danger)' : 'var(--success)';
+    }
+
+    function onHotelChange() {
+      _populateCharacters(document.getElementById('order-hotel').value);
+    }
+
+    function _populateCharacters(hotel) {
+      const sel = document.getElementById('order-habbo-name');
+      const filtered = myAccounts.filter(a => !hotel || a.hotel === hotel);
+      sel.innerHTML = filtered.length
+        ? ['<option value="">— Selecciona tu personaje —</option>',
+            ...filtered.map(a => `<option value="${a.habbo_name}">${a.habbo_name} (habbo.${a.hotel})</option>`)].join('')
+        : '<option value="">No tienes cuentas en este hotel</option>';
+    }
+
+    function openOrderModal(productId) {
+      const product = allProducts.find(p => p.id === productId);
+      if (!product) return;
+      selectedProductId = productId;
+      selectedProduct   = product;
+      document.getElementById('modal-title').textContent = product.name;
+      document.getElementById('modal-desc').textContent  = product.description || '';
+      const isRoomType = ['room_fill','raid'].includes(product.type);
+      const showNotes  = ['custom','trade'].includes(product.type);
+      document.getElementById('room-id-group').style.display   = isRoomType ? 'block' : 'none';
+      document.getElementById('bot-count-group').style.display = isRoomType ? 'block' : 'none';
+      document.getElementById('duration-group').style.display  = isRoomType ? 'block' : 'none';
+      document.getElementById('notes-label').style.display     = showNotes  ? 'block' : 'none';
+      document.getElementById('order-notes').style.display     = showNotes  ? 'block' : 'none';
+      if (isRoomType) {
+        document.getElementById('order-bot-count').value = 10;
+        document.getElementById('bot-count-val').textContent = '10';
+      }
+      const preHotel = product.hotel || (currentHotel !== 'all' ? currentHotel : 'es');
+      document.getElementById('order-hotel').value = preHotel;
+      _populateCharacters(preHotel);
+      recalcPrice();
+      document.getElementById('order-modal').classList.remove('hidden');
+    }
+
+    function closeOrderModal() {
+      document.getElementById('order-modal').classList.add('hidden');
+      selectedProductId = null; selectedProduct = null;
+    }
+
+    async function confirmOrder() {
+      if (!selectedProductId || !selectedProduct) return;
+      const hotel     = document.getElementById('order-hotel').value;
+      const habboName = document.getElementById('order-habbo-name').value;
+      const notes     = document.getElementById('order-notes').value.trim();
+      if (!habboName) return showToast('Selecciona tu personaje de Habbo', 'warning');
+      const isRoomType = ['room_fill','raid'].includes(selectedProduct.type);
+      const roomId   = isRoomType ? (document.getElementById('order-room-id').value || null) : null;
+      const botCount = isRoomType ? parseInt(document.getElementById('order-bot-count').value) : null;
+      const duration = isRoomType ? parseInt(document.getElementById('order-duration').value) : null;
+      if (isRoomType && !roomId) return showToast('Introduce el ID de sala', 'warning');
+      const btn = document.getElementById('confirm-order-btn');
+      btn.disabled = true; btn.textContent = 'Procesando…';
+      try {
+        const result = await ProductsAPI.order(selectedProductId, hotel, habboName, notes||undefined, botCount, duration, roomId);
+        closeOrderModal();
+        showToast(result.message || '¡Pedido realizado! Los bots se activarán en segundos.', 'success');
+        const { credits } = await CreditsAPI.balance();
+        _credits = credits;
+        document.getElementById('saldo-display').textContent = credits.toLocaleString();
+        const navEl = document.getElementById('nav-credits');
+        if (navEl) navEl.textContent = credits.toLocaleString();
+        loadActiveServices();
+        loadOrders();
+      } catch (err) {
+        showToast(err.message || 'Error al procesar el pedido', 'danger');
+      } finally {
+        btn.disabled = false; btn.textContent = '💎 Contratar ahora';
+      }
+    }
+
+    // ── Order history ───────────────────────────────
+    async function loadOrders() {
+      const container = document.getElementById('orders-list');
+      const filterVal = document.getElementById('order-status-filter')?.value || '';
+      container.innerHTML = '<p style="color:var(--text-muted);font-size:.84rem;">Cargando…</p>';
+      try {
+        const { orders } = await ProductsAPI.myOrders();
+        const filtered = filterVal ? orders.filter(o => o.status === filterVal) : orders;
+        if (!filtered.length) {
+          container.innerHTML = '<p style="color:var(--text-muted);font-size:.84rem;">No hay pedidos para este filtro.</p>'; return;
+        }
+        container.innerHTML = filtered.map(o => {
+          const date    = new Date(o.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+          const label   = STATUS_LABELS[o.status] || o.status;
+          const endsAt  = o.ends_at ? new Date(o.ends_at).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : null;
+          return `
+          <div class="order-row">
+            <span class="order-status status-${o.status}">${label}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${o.product_name}</div>
+              <div style="color:var(--text-muted);font-size:.74rem;">
+                ${o.habbo_name} · habbo.${o.hotel} · ${date}${endsAt?` · Hasta: ${endsAt}`:''}${o.notes?` · <em>${o.notes}</em>`:''}
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0;">
+              <div style="font-family:'Orbitron',sans-serif;font-size:.78rem;color:var(--danger);">−${o.credits_paid}💎</div>
+              <button class="hb-btn hb-btn-ghost" style="font-size:.7rem;padding:.2rem .5rem;" onclick="openTicketForOrder('${o.id}','${(o.product_name||'').replace(/'/g,"\\'")}')">🎫</button>
+            </div>
+          </div>`;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = `<p style="color:var(--danger);font-size:.84rem;">Error: ${err.message}</p>`;
+      }
+    }
+
+    function openTicketForOrder(orderId, productName) {
+      window.location.href = `/soporte?order_id=${orderId}&subject=${encodeURIComponent('Problema con: '+productName)}`;
+    }
+  </script>
+</DashLayout>

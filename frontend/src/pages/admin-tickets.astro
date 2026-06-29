@@ -1,0 +1,172 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Tickets de Soporte" activePage="admin-tickets">
+<style>
+  .toolbar { display:flex; gap:.6rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center; }
+  .toolbar select, .toolbar input {
+    padding:.42rem .75rem; background:rgba(0,0,0,.3); border:1px solid var(--border-glow);
+    border-radius:7px; color:#fff; font-size:.82rem;
+  }
+  .filter-btn { padding:.42rem .9rem; border-radius:7px; border:1px solid var(--border-glow);
+                background:none; color:var(--text-muted); font-size:.78rem; cursor:pointer; font-weight:600; }
+  .filter-btn.active { background:rgba(0,195,255,.12); color:var(--blue-primary); border-color:rgba(0,195,255,.3); }
+
+  .ticket-list { display:flex; flex-direction:column; gap:.5rem; margin-bottom:1.5rem; }
+  .ticket-row {
+    display:flex; align-items:center; gap:.85rem; padding:.75rem 1rem;
+    background:var(--bg-card); border:1px solid var(--border-glow); border-radius:10px;
+    cursor:pointer; transition:border-color .15s;
+  }
+  .ticket-row:hover { border-color:rgba(0,195,255,.3); }
+  .ticket-row.selected { border-color:var(--blue-primary); background:rgba(0,195,255,.05); }
+  .t-subject { font-weight:600; color:#fff; font-size:.87rem; }
+  .t-meta    { font-size:.73rem; color:var(--text-muted); margin-top:.1rem; }
+  .t-badge   { padding:.18rem .55rem; border-radius:20px; font-size:.68rem; font-weight:700; flex-shrink:0; }
+  .badge-open        { background:rgba(255,190,0,.15); color:var(--warning); }
+  .badge-in_progress { background:rgba(0,195,255,.12); color:var(--blue-primary); }
+  .badge-closed      { background:rgba(100,100,150,.12); color:var(--text-muted); }
+  .t-msgs    { margin-left:auto; font-size:.72rem; color:var(--text-muted); }
+
+  .detail-panel {
+    background:var(--bg-card); border:1px solid var(--border-glow); border-radius:12px; padding:1.2rem;
+    display:none;
+  }
+  .detail-panel.active { display:block; }
+  .dp-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+  .dp-title  { font-weight:700; color:#fff; font-size:1rem; }
+  .dp-meta   { font-size:.75rem; color:var(--text-muted); margin-top:.2rem; }
+  .dp-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .btn-sm    { padding:.35rem .75rem; border-radius:7px; border:none; cursor:pointer; font-size:.75rem; font-weight:700; }
+  .btn-close { background:rgba(100,100,150,.2); color:var(--text-muted); }
+  .btn-progress { background:rgba(0,195,255,.15); color:var(--blue-primary); }
+  .btn-reopen { background:rgba(255,190,0,.15); color:var(--warning); }
+
+  .msg-list  { display:flex; flex-direction:column; gap:.65rem; max-height:360px; overflow-y:auto; margin-bottom:1rem; padding-right:.25rem; }
+  .msg-bubble { padding:.65rem .9rem; border-radius:10px; font-size:.84rem; line-height:1.5; max-width:85%; }
+  .msg-user  { background:rgba(0,195,255,.07); border:1px solid rgba(0,195,255,.15); align-self:flex-start; }
+  .msg-admin { background:rgba(155,48,255,.1);  border:1px solid rgba(155,48,255,.2); align-self:flex-end; }
+  .msg-meta  { font-size:.68rem; color:var(--text-muted); margin-bottom:.2rem; }
+
+  .reply-area { display:flex; gap:.6rem; }
+  .reply-input {
+    flex:1; padding:.65rem .9rem; background:rgba(0,0,0,.3); border:1px solid var(--border-glow);
+    border-radius:8px; color:#fff; font-size:.85rem; resize:vertical; min-height:60px;
+  }
+  .btn-reply { padding:.65rem 1.2rem; background:linear-gradient(135deg,#9b30ff,#6010cc);
+               border:none; border-radius:8px; color:#fff; font-weight:700; cursor:pointer; align-self:flex-end; }
+  .empty-state { text-align:center; padding:2rem; color:var(--text-muted); font-size:.87rem; }
+</style>
+
+<div class="toolbar">
+  <button class="filter-btn active" data-s="">Todos</button>
+  <button class="filter-btn" data-s="open">Abiertos</button>
+  <button class="filter-btn" data-s="in_progress">En proceso</button>
+  <button class="filter-btn" data-s="closed">Cerrados</button>
+</div>
+
+<div class="ticket-list" id="ticket-list"><div class="empty-state">Cargando…</div></div>
+
+<div class="detail-panel" id="detail-panel">
+  <div class="dp-header">
+    <div>
+      <div class="dp-title" id="dp-title">—</div>
+      <div class="dp-meta" id="dp-meta">—</div>
+    </div>
+    <div class="dp-actions">
+      <button class="btn-sm btn-progress" onclick="setStatus('in_progress')">En proceso</button>
+      <button class="btn-sm btn-close"    onclick="setStatus('closed')">Cerrar</button>
+      <button class="btn-sm btn-reopen"   onclick="setStatus('open')">Reabrir</button>
+    </div>
+  </div>
+  <div class="msg-list" id="msg-list"></div>
+  <div class="reply-area">
+    <textarea class="reply-input" id="reply-input" placeholder="Escribe tu respuesta…" rows="3"></textarea>
+    <button class="btn-reply" onclick="sendReply()">Enviar</button>
+  </div>
+</div>
+
+<script>
+let _tickets = [], _selId = null, _filter = '';
+
+async function loadTickets() {
+  const params = _filter ? { status: _filter } : {};
+  const d = await AdminAPI.tickets(params).catch(() => ({ tickets: [] }));
+  _tickets = d.tickets || [];
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('ticket-list');
+  if (!_tickets.length) {
+    list.innerHTML = '<div class="empty-state">No hay tickets con este filtro</div>';
+    return;
+  }
+  list.innerHTML = _tickets.map(t => `
+    <div class="ticket-row ${_selId===t.id?'selected':''}" onclick="openTicket('${t.id}')">
+      <div style="flex:1;min-width:0">
+        <div class="t-subject">${t.subject}</div>
+        <div class="t-meta">por ${t.username} · ${new Date(t.created_at).toLocaleDateString('es-ES')}</div>
+      </div>
+      <span class="t-badge badge-${t.status}">${{open:'Abierto',in_progress:'En proceso',closed:'Cerrado'}[t.status]||t.status}</span>
+      <span class="t-msgs">💬 ${t.message_count||0}</span>
+    </div>`).join('');
+}
+
+async function openTicket(id) {
+  _selId = id;
+  renderList();
+  const det = await TicketsAPI.get(id).catch(() => null);
+  if (!det) return;
+  const t = det.ticket;
+  document.getElementById('dp-title').textContent = t.subject;
+  document.getElementById('dp-meta').textContent  = `#${t.id.slice(0,8)} · ${t.username} · ${new Date(t.created_at).toLocaleString('es-ES')}`;
+
+  const msgList = document.getElementById('msg-list');
+  msgList.innerHTML = det.messages.map(m => `
+    <div style="display:flex;flex-direction:column;align-items:${m.is_admin?'flex-end':'flex-start'}">
+      <div class="msg-meta">${m.is_admin?'<span style="color:#c084fc">Admin</span>':m.username} · ${new Date(m.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div class="msg-bubble ${m.is_admin?'msg-admin':'msg-user'}">${m.message}</div>
+    </div>`).join('');
+  msgList.scrollTop = msgList.scrollHeight;
+
+  document.getElementById('detail-panel').classList.add('active');
+}
+
+async function sendReply() {
+  if (!_selId) return;
+  const msg = document.getElementById('reply-input').value.trim();
+  if (!msg) return;
+  try {
+    await AdminAPI.replyTicket(_selId, msg);
+    document.getElementById('reply-input').value = '';
+    await openTicket(_selId);
+  } catch(e) { alert(e.message); }
+}
+
+async function setStatus(status) {
+  if (!_selId) return;
+  await AdminAPI.setTicketStatus(_selId, status).catch(e => alert(e.message));
+  await loadTickets();
+  if (status !== 'closed') await openTicket(_selId);
+  else document.getElementById('detail-panel').classList.remove('active');
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _filter = btn.dataset.s;
+    loadTickets();
+  });
+});
+
+// Enter en textarea = Shift+Enter para nueva línea, Enter solo envía
+document.getElementById('reply-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); }
+});
+
+loadTickets();
+setInterval(loadTickets, 30_000);
+</script>
+</DashLayout>

@@ -1,0 +1,662 @@
+---
+// Panel de control de bots — usuario normal (solo sus propios bots)
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control de Bot — HabboBots</title>
+  <link rel="stylesheet" href="/css/global.css" />
+  <script src="/js/api.js" is:inline></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-sans); margin:0; height:100vh; display:flex; flex-direction:column; }
+
+    /* ── Topbar ─────────────────────────────────── */
+    .topbar { display:flex; align-items:center; gap:.75rem; padding:.65rem 1.25rem; background:var(--bg-card); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .topbar a { color:var(--text-muted); font-size:.82rem; text-decoration:none; }
+    .topbar a:hover { color:var(--text-primary); }
+    .topbar-brand { font-family:'Orbitron',sans-serif; font-size:.95rem; font-weight:700; color:var(--blue-primary); margin-left:auto; }
+    .topbar-credits { display:flex; align-items:center; gap:.4rem; padding:.3rem .75rem; background:rgba(155,48,255,.12); border:1px solid rgba(155,48,255,.25); border-radius:50px; font-size:.78rem; color:var(--purple-primary); font-weight:600; }
+
+    /* ── Layout ──────────────────────────────────── */
+    .layout { display:grid; grid-template-columns:260px 1fr; flex:1; overflow:hidden; }
+
+    /* ── Sidebar ─────────────────────────────────── */
+    .sidebar { background:var(--bg-card); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+    .sidebar-hd { padding:.7rem 1rem; border-bottom:1px solid var(--border); }
+    .sidebar-hd h3 { margin:0; font-size:.88rem; font-weight:700; }
+    .sidebar-hd p  { margin:.1rem 0 0; font-size:.72rem; color:var(--text-muted); }
+    .bot-list { flex:1; overflow-y:auto; }
+    .bot-item { padding:.6rem 1rem; border-bottom:1px solid var(--border); cursor:pointer; display:flex; align-items:center; gap:.55rem; transition:background .12s; }
+    .bot-item:hover { background:var(--bg-hover); }
+    .bot-item.active { background:rgba(0,195,255,.07); border-left:3px solid var(--blue-primary); }
+    .bot-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .dot-online  { background:var(--success); box-shadow:0 0 6px var(--success); }
+    .dot-offline { background:var(--text-muted); }
+    .dot-connecting { background:var(--warning); animation:pulse 1s infinite; }
+    .dot-error   { background:var(--danger); }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+    .bot-item-name { font-size:.82rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+    .bot-item-sub  { font-size:.68rem; color:var(--text-muted); }
+    .sidebar-ft { padding:.65rem 1rem; border-top:1px solid var(--border); display:flex; gap:.4rem; }
+
+    /* ── Panel derecho ───────────────────────────── */
+    .panel { display:flex; flex-direction:column; overflow:hidden; }
+    .panel-tabs { display:flex; background:var(--bg-card); border-bottom:1px solid var(--border); }
+    .tab-btn { padding:.5rem .95rem; font-size:.8rem; cursor:pointer; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; transition:.12s; }
+    .tab-btn.active { color:var(--blue-primary); border-bottom-color:var(--blue-primary); }
+    .tab-btn:hover:not(.active) { color:var(--text-primary); }
+    .tab-content { display:none; flex:1; overflow-y:auto; }
+    .tab-content.active { display:flex; flex-direction:column; }
+
+    /* ── Actions ─────────────────────────────────── */
+    .acts { padding:1rem; display:flex; flex-direction:column; gap:.85rem; }
+    .act-section { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:.85rem; }
+    .act-section h4 { margin:0 0 .6rem; font-size:.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; }
+    .act-row { display:flex; gap:.4rem; flex-wrap:wrap; align-items:flex-end; }
+    .act-input { flex:1; min-width:110px; background:rgba(0,0,0,.3); border:1px solid var(--border); border-radius:6px; padding:.4rem .65rem; font-size:.8rem; color:var(--text-primary); outline:none; }
+    .act-input:focus { border-color:var(--blue-primary); }
+    .act-btn { padding:.38rem .75rem; border:none; border-radius:6px; font-size:.75rem; font-weight:600; cursor:pointer; transition:opacity .12s; white-space:nowrap; }
+    .act-btn:hover { opacity:.85; }
+    .act-primary  { background:var(--blue-primary); color:#000; }
+    .act-purple   { background:var(--purple-primary); color:#fff; }
+    .act-success  { background:var(--success); color:#000; }
+    .act-danger   { background:var(--danger); color:#fff; }
+    .act-warning  { background:var(--warning); color:#000; }
+    .act-muted    { background:rgba(255,255,255,.08); color:var(--text-primary); }
+    .num-input    { width:68px; flex:none; }
+
+    /* ── Bot status card ─────────────────────────── */
+    .bot-status-card { padding:1rem; background:var(--bg-card); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:1rem; }
+    .bot-status-name { font-size:1rem; font-weight:700; }
+    .bot-status-sub  { font-size:.74rem; color:var(--text-muted); margin-top:.1rem; }
+    .status-pill { padding:.18rem .55rem; border-radius:4px; font-size:.7rem; font-weight:700; text-transform:uppercase; }
+    .pill-online  { background:rgba(0,255,163,.12); color:var(--success); }
+    .pill-offline { background:rgba(255,255,255,.06); color:var(--text-muted); }
+    .pill-connecting { background:rgba(255,190,0,.12); color:var(--warning); }
+    .pill-error   { background:rgba(255,60,60,.12); color:var(--danger); }
+    .expiry-bar { height:3px; background:rgba(255,255,255,.06); border-radius:2px; margin:.5rem 0 .25rem; }
+    .expiry-fill { height:100%; border-radius:2px; transition:width .5s; }
+
+    /* ── Logs ────────────────────────────────────── */
+    .log-wrap { display:flex; flex-direction:column; flex:1; overflow:hidden; }
+    .log-toolbar { padding:.45rem .85rem; background:var(--bg-card); border-bottom:1px solid var(--border); display:flex; gap:.4rem; align-items:center; }
+    .log-box { flex:1; overflow-y:auto; padding:.65rem .85rem; font-family:monospace; font-size:.73rem; line-height:1.65; background:rgba(0,0,0,.25); }
+    .log-ok    { color:var(--success); }
+    .log-err   { color:var(--danger); }
+    .log-warn  { color:var(--warning); }
+    .log-info  { color:var(--text-primary); }
+
+    /* ── Empty / placeholder ─────────────────────── */
+    .empty-center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); gap:.5rem; text-align:center; padding:2rem; }
+    .empty-icon { font-size:3rem; }
+    .empty-title { font-size:.95rem; font-weight:600; color:var(--text-secondary); }
+    .empty-sub { font-size:.8rem; }
+
+    /* ── Toast ───────────────────────────────────── */
+    .toast-bar { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:.6rem 1.1rem; font-size:.8rem; z-index:999; display:none; box-shadow:0 4px 20px #0008; min-width:200px; text-align:center; }
+
+    /* ── Rent modal ──────────────────────────────── */
+    .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); z-index:400; align-items:center; justify-content:center; }
+    .overlay.open { display:flex; }
+    .modal-box { background:var(--bg-card); border:1px solid var(--border-glow); border-radius:14px; padding:1.5rem; max-width:440px; width:90%; max-height:90vh; overflow-y:auto; }
+    .modal-title { font-family:'Orbitron',sans-serif; font-size:1rem; font-weight:700; margin-bottom:1.25rem; display:flex; align-items:center; justify-content:space-between; }
+    .modal-close { cursor:pointer; color:var(--text-muted); font-size:1.1rem; }
+    .modal-close:hover { color:var(--text-primary); }
+    .form-label { font-size:.8rem; color:var(--text-muted); display:block; margin-bottom:.3rem; }
+    .form-ctrl { width:100%; padding:.5rem .75rem; background:rgba(0,0,0,.3); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); font-size:.84rem; margin-bottom:.85rem; outline:none; }
+    .form-ctrl:focus { border-color:var(--blue-primary); }
+    .plan-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-bottom:.85rem; }
+    .plan-opt { padding:.65rem .3rem; border:1px solid var(--border); border-radius:7px; text-align:center; cursor:pointer; transition:.15s; font-size:.78rem; }
+    .plan-opt.sel { border-color:var(--blue-primary); background:rgba(0,195,255,.08); }
+    .plan-opt:hover:not(.sel) { border-color:rgba(255,255,255,.2); }
+    .plan-price { font-family:'Orbitron',sans-serif; font-size:.82rem; font-weight:700; color:var(--blue-primary); }
+    .qty-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:.4rem; margin-bottom:.85rem; }
+    .qty-opt { padding:.5rem .2rem; border:1px solid var(--border); border-radius:6px; text-align:center; cursor:pointer; transition:.15s; font-size:.8rem; font-weight:700; }
+    .qty-opt.sel { border-color:var(--purple-primary); background:rgba(155,48,255,.1); }
+    .cost-summary { padding:.65rem .85rem; background:rgba(0,195,255,.05); border:1px solid rgba(0,195,255,.2); border-radius:7px; font-size:.8rem; margin-bottom:1rem; }
+
+    @media (max-width:680px) { .layout { grid-template-columns:1fr; } .sidebar { max-height:220px; } }
+  </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <a href="/bots">← Mis Bots</a>
+  <span style="color:var(--border);">|</span>
+  <a href="/home">Inicio</a>
+  <div class="topbar-brand">🤖 Mi Panel de Bot</div>
+  <div class="topbar-credits">💎 <span id="nav-credits-top">—</span> cr</div>
+  <button class="act-btn act-muted" style="margin-left:.25rem;font-size:.72rem;" onclick="refreshBots()">⟳</button>
+</div>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-hd">
+      <h3>Mis bots (<span id="bot-count">0</span>)</h3>
+      <p>Selecciona un bot para controlarlo</p>
+    </div>
+    <div class="bot-list" id="bot-list">
+      <div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.8rem;">Cargando…</div>
+    </div>
+    <div class="sidebar-ft">
+      <button class="act-btn act-primary" style="flex:1;" onclick="openRentModal()">+ Contratar bot</button>
+    </div>
+  </div>
+
+  <!-- Panel -->
+  <div class="panel" id="main-panel">
+    <div class="empty-center">
+      <div class="empty-icon">🎮</div>
+      <div class="empty-title">Selecciona un bot</div>
+      <div class="empty-sub">Elige uno del panel izquierdo para controlarlo en tiempo real</div>
+      <button class="act-btn act-primary" style="margin-top:1rem;" onclick="openRentModal()">+ Contratar mi primer bot</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-bar" id="toast"></div>
+
+<!-- Rent modal -->
+<div class="overlay" id="rent-modal">
+  <div class="modal-box">
+    <div class="modal-title">
+      🤖 Contratar bot
+      <span class="modal-close" onclick="closeRentModal()">✕</span>
+    </div>
+    <label class="form-label">Nombre del bot</label>
+    <input type="text" id="rent-name" class="form-ctrl" placeholder="MiBot_ES" />
+    <label class="form-label">Hotel</label>
+    <select id="rent-hotel" class="form-ctrl">
+      <option value="es">🇪🇸 habbo.es</option>
+      <option value="com">🌐 habbo.com</option>
+      <option value="com.br">🇧🇷 habbo.com.br</option>
+      <option value="de">🇩🇪 habbo.de</option>
+      <option value="fi">🇫🇮 habbo.fi</option>
+      <option value="it">🇮🇹 habbo.it</option>
+      <option value="tr">🇹🇷 habbo.com.tr</option>
+    </select>
+    <label class="form-label">Sala inicial (opcional)</label>
+    <input type="text" id="rent-room" class="form-ctrl" placeholder="ID o nombre de sala" />
+    <label class="form-label" style="margin-bottom:.5rem;">Duración</label>
+    <div class="plan-grid">
+      <div class="plan-opt sel" id="rp-1d" onclick="selectRentPlan('1d')"><div>1 día</div><div class="plan-price">5 cr</div></div>
+      <div class="plan-opt" id="rp-3d" onclick="selectRentPlan('3d')"><div>3 días</div><div class="plan-price">12 cr</div></div>
+      <div class="plan-opt" id="rp-7d" onclick="selectRentPlan('7d')"><div>1 sem.</div><div class="plan-price">25 cr</div></div>
+      <div class="plan-opt" id="rp-1m" onclick="selectRentPlan('1m')"><div>1 mes</div><div class="plan-price">60 cr</div></div>
+      <div class="plan-opt" id="rp-3m" onclick="selectRentPlan('3m')"><div>3 meses</div><div class="plan-price">150 cr</div></div>
+    </div>
+    <label class="form-label" style="margin-bottom:.5rem;">Cantidad</label>
+    <div class="qty-grid">
+      <div class="qty-opt sel" id="rq-1"  onclick="selectRentQty(1)">×1</div>
+      <div class="qty-opt" id="rq-5"  onclick="selectRentQty(5)">×5</div>
+      <div class="qty-opt" id="rq-10" onclick="selectRentQty(10)">×10</div>
+      <div class="qty-opt" id="rq-20" onclick="selectRentQty(20)">×20</div>
+      <div class="qty-opt" id="rq-50" onclick="selectRentQty(50)">×50</div>
+    </div>
+    <div class="cost-summary" id="rent-cost-summary">
+      💎 Total: <strong id="rent-cost">5 créditos</strong> · Saldo actual: <span id="rent-balance">—</span> cr
+    </div>
+    <div style="display:flex;gap:.5rem;">
+      <button class="act-btn act-muted" style="flex:1;" onclick="closeRentModal()">Cancelar</button>
+      <button class="act-btn act-purple" style="flex:1;font-size:.85rem;" onclick="doRentBot()">✓ Contratar</button>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+(async () => {
+  // ── Auth guard ────────────────────────────────
+  try {
+    const { user } = await AuthAPI.me();
+    if (!user) { window.location.href = '/'; return; }
+    loadCredits();
+  } catch { window.location.href = '/'; return; }
+
+  // ── State ─────────────────────────────────────
+  let _bots    = [];
+  let _selId   = null;
+  let _logTimer = null;
+
+  const PLANS = {
+    '1d':{ label:'1 día',    credits:5,   days:1  },
+    '3d':{ label:'3 días',   credits:12,  days:3  },
+    '7d':{ label:'1 semana', credits:25,  days:7  },
+    '1m':{ label:'1 mes',    credits:60,  days:30 },
+    '3m':{ label:'3 meses',  credits:150, days:90 },
+  };
+  let _rentPlan = '1d', _rentQty = 1, _credits = 0;
+
+  async function loadCredits() {
+    try {
+      const { credits } = await CreditsAPI.balance();
+      _credits = credits;
+      document.getElementById('nav-credits-top').textContent = credits.toLocaleString();
+    } catch {}
+  }
+
+  // ── Toast ──────────────────────────────────────
+  function toast(msg, type = 'info') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.borderColor = type === 'danger' ? 'var(--danger)' : type === 'success' ? 'var(--success)' : 'var(--border)';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.style.display = 'none', 3200);
+  }
+
+  // ── Load bots ──────────────────────────────────
+  async function refreshBots() {
+    try {
+      const { bots } = await BotsAPI.list();
+      _bots = bots || [];
+      document.getElementById('bot-count').textContent = _bots.length;
+      renderBotList();
+      // Actualizar panel si hay uno seleccionado
+      if (_selId) {
+        const sel = _bots.find(b => b.id === _selId);
+        if (sel) updateStatusBar(sel);
+      }
+    } catch (e) {
+      document.getElementById('bot-list').innerHTML =
+        `<div style="padding:1rem;color:var(--danger);font-size:.78rem;">Error: ${e.message}</div>`;
+    }
+  }
+
+  function renderBotList() {
+    const list = document.getElementById('bot-list');
+    if (!_bots.length) {
+      list.innerHTML = `<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.8rem;">Sin bots rentados.<br>Contrata uno arriba.</div>`;
+      return;
+    }
+    list.innerHTML = _bots.map(b => {
+      const st  = b.status || 'offline';
+      const dot = st === 'online' ? 'online' : st === 'connecting' ? 'connecting' : st === 'error' ? 'error' : 'offline';
+      const exp = b.expires_at ? expiryLabel(b.expires_at) : '';
+      return `<div class="bot-item ${_selId === b.id ? 'active' : ''}" onclick="selectBot('${b.id}')">
+        <div class="bot-dot dot-${dot}"></div>
+        <div style="flex:1;min-width:0;">
+          <div class="bot-item-name">${b.name}</div>
+          <div class="bot-item-sub">habbo.${b.hotel} · ${st}${exp ? ' · '+exp : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function expiryLabel(isoDate) {
+    const ms = new Date(isoDate) - Date.now();
+    if (ms < 0) return '⚠ Expirado';
+    const d = Math.ceil(ms / 86400000);
+    return d <= 3 ? `⏳ ${d}d` : `${d}d`;
+  }
+
+  // ── Select bot ─────────────────────────────────
+  window.selectBot = function(id) {
+    _selId = id;
+    renderBotList();
+    const bot = _bots.find(b => b.id === id);
+    if (!bot) return;
+    renderPanel(bot);
+  };
+
+  function renderPanel(bot) {
+    const panel = document.getElementById('main-panel');
+    const st = bot.status || 'offline';
+    const pillClass = st === 'online' ? 'pill-online' : st === 'connecting' ? 'pill-connecting' : st === 'error' ? 'pill-error' : 'pill-offline';
+
+    // Expiry bar
+    let expiryBar = '';
+    if (bot.expires_at) {
+      const total   = new Date(bot.expires_at) - new Date(bot.created_at || Date.now() - 86400000);
+      const elapsed = Date.now() - new Date(bot.created_at || Date.now());
+      const pct     = Math.max(0, Math.min(100, (1 - elapsed/total) * 100));
+      const barColor = pct > 30 ? 'var(--success)' : pct > 10 ? 'var(--warning)' : 'var(--danger)';
+      const ms = new Date(bot.expires_at) - Date.now();
+      const daysLeft = ms > 0 ? `${Math.ceil(ms/86400000)}d restantes` : '⚠ Expirado';
+      expiryBar = `
+        <div class="expiry-bar"><div class="expiry-fill" style="width:${pct.toFixed(1)}%;background:${barColor};"></div></div>
+        <div style="font-size:.68rem;color:var(--text-muted);">${daysLeft}${bot.duration_label ? ' · '+bot.duration_label : ''}</div>`;
+    }
+
+    panel.innerHTML = `
+      <!-- Status bar -->
+      <div class="bot-status-card">
+        <div style="flex:1;">
+          <div class="bot-status-name">${bot.name}</div>
+          <div class="bot-status-sub">habbo.${bot.hotel} ${bot.room ? '· 📍 '+bot.room : ''}</div>
+          ${expiryBar}
+        </div>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <span class="status-pill ${pillClass}">${st}</span>
+          ${st === 'online' || st === 'busy'
+            ? `<button class="act-btn act-danger" onclick="botStop('${bot.id}')">■ Parar</button>`
+            : `<button class="act-btn act-success" onclick="botStart('${bot.id}')">▶ Iniciar</button>`}
+          <button class="act-btn act-muted" onclick="refreshBots()" title="Refrescar">⟳</button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="panel-tabs">
+        <button class="tab-btn active" onclick="swTab('actions',this)">⚡ Acciones</button>
+        <button class="tab-btn"        onclick="swTab('movement',this)">🚶 Movimiento</button>
+        <button class="tab-btn"        onclick="swTab('social',this)">👥 Social</button>
+        <button class="tab-btn"        onclick="swTab('logs',this)">📜 Logs</button>
+      </div>
+
+      <!-- TAB: Acciones ───────────────────────────── -->
+      <div class="tab-content active" id="tc-actions">
+        <div class="acts">
+
+          <!-- Sala -->
+          <div class="act-section">
+            <h4>🏨 Sala</h4>
+            <div class="act-row">
+              <input id="a-room" class="act-input" type="number" placeholder="ID de sala…" />
+              <button class="act-btn act-primary" onclick="botAct('join_room',{room_id:vi('a-room')})">Entrar</button>
+              <button class="act-btn act-muted"   onclick="botAct('leave_room',{})">Salir</button>
+            </div>
+          </div>
+
+          <!-- Chat -->
+          <div class="act-section">
+            <h4>💬 Chat</h4>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <input id="a-msg" class="act-input" placeholder="Mensaje…" onkeydown="if(event.key==='Enter')botAct('shout',{msg:vi('a-msg')})" />
+              <button class="act-btn act-primary" onclick="botAct('shout',{msg:vi('a-msg')})">SHOUT</button>
+              <button class="act-btn act-muted"   onclick="botAct('say',{msg:vi('a-msg')})">SAY</button>
+            </div>
+            <div class="act-row">
+              <input id="a-wh-user" class="act-input" placeholder="Usuario…" style="max-width:140px;" />
+              <input id="a-wh-msg"  class="act-input" placeholder="Privado…" />
+              <button class="act-btn act-primary" onclick="botAct('whisper',{user:vi('a-wh-user'),msg:vi('a-wh-msg')})">Whisper</button>
+            </div>
+          </div>
+
+          <!-- Perfil -->
+          <div class="act-section">
+            <h4>✏️ Perfil</h4>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <input id="a-motto" class="act-input" placeholder="Nuevo motto…" />
+              <button class="act-btn act-primary" onclick="botAct('motto',{motto:vi('a-motto')})">Cambiar</button>
+            </div>
+            <div class="act-row">
+              <select id="a-gender" class="act-input" style="max-width:75px;"><option value="M">M</option><option value="F">F</option></select>
+              <input id="a-figure" class="act-input" placeholder="Código figura…" />
+              <button class="act-btn act-primary" onclick="botAct('figure',{gender:vi('a-gender'),figure:vi('a-figure')})">Set</button>
+              <button class="act-btn act-muted"   onclick="botAct('rand_look',{})">⊞ Rand</button>
+              <button class="act-btn act-muted"   onclick="botAct('rand_nick',{})">✎ Nick</button>
+            </div>
+          </div>
+
+          <!-- Animaciones -->
+          <div class="act-section">
+            <h4>💃 Animaciones</h4>
+            <div class="act-row" style="margin-bottom:.4rem;">
+              <input id="a-dance" class="act-input num-input" type="number" placeholder="1–6" value="1" min="1" max="6" style="width:65px;flex:none;" />
+              <button class="act-btn act-primary" onclick="botAct('dance',{style:parseInt(vi('a-dance'))})">Dance</button>
+              <input id="a-sign" class="act-input" type="number" placeholder="Sign" value="1" min="1" max="18" style="width:65px;flex:none;" />
+              <button class="act-btn act-primary" onclick="botAct('sign',{sign:parseInt(vi('a-sign'))})">Sign</button>
+              <input id="a-effect" class="act-input" type="number" placeholder="Effect" value="1" min="1" style="width:70px;flex:none;" />
+              <button class="act-btn act-primary" onclick="botAct('effect',{effect:parseInt(vi('a-effect'))})">Effect</button>
+            </div>
+            <div class="act-row">
+              <button class="act-btn act-muted" onclick="botAct('posture',{posture:1})">Sentarse</button>
+              <button class="act-btn act-muted" onclick="botAct('posture',{posture:0})">Levantarse</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB: Movimiento ─────────────────────────── -->
+      <div class="tab-content" id="tc-movement">
+        <div class="acts">
+          <div class="act-section">
+            <h4>🎯 Caminar a coordenadas</h4>
+            <div class="act-row">
+              <input id="m-x" class="act-input" type="number" placeholder="X" value="5" style="width:70px;flex:none;" />
+              <input id="m-y" class="act-input" type="number" placeholder="Y" value="5" style="width:70px;flex:none;" />
+              <button class="act-btn act-primary" onclick="botAct('walk',{x:parseInt(vi('m-x')),y:parseInt(vi('m-y'))})">Caminar</button>
+            </div>
+          </div>
+          <div class="act-section">
+            <h4>🔀 Movimiento automático</h4>
+            <div class="act-row">
+              <button class="act-btn act-warning" onclick="botAct('random_walk',{delay:2.5})">⟳ Paseo aleatorio</button>
+              <button class="act-btn act-danger"  onclick="botAct('stop_walk',{})">■ Parar paseo</button>
+            </div>
+          </div>
+          <div class="act-section">
+            <h4>🔍 Buscar sala</h4>
+            <div class="act-row">
+              <input id="m-query" class="act-input" placeholder="Nombre de sala…" />
+              <button class="act-btn act-primary" onclick="navSearch()">Buscar</button>
+            </div>
+            <div id="m-results" style="margin-top:.6rem;font-size:.75rem;color:var(--text-muted);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Social ─────────────────────────────── -->
+      <div class="tab-content" id="tc-social">
+        <div class="acts">
+          <div class="act-section">
+            <h4>👤 Acciones sobre usuario</h4>
+            <div class="act-row" style="margin-bottom:.5rem;">
+              <input id="s-user" class="act-input" placeholder="Nombre de usuario…" />
+            </div>
+            <div class="act-row">
+              <button class="act-btn act-success" onclick="botAct('respect_user',{username:vi('s-user')})">👏 Respetar</button>
+              <button class="act-btn act-primary" onclick="botAct('request_friend',{username:vi('s-user')})">➕ Añadir amigo</button>
+              <button class="act-btn act-muted"   onclick="botAct('stalk',{user:vi('s-user')})">👁 Stalk</button>
+              <button class="act-btn act-muted"   onclick="botAct('copy_looks',{user:vi('s-user')})">👗 Copiar looks</button>
+            </div>
+          </div>
+          <div class="act-section">
+            <h4>👥 Usuarios en sala</h4>
+            <div class="act-row" style="margin-bottom:.5rem;">
+              <button class="act-btn act-muted" onclick="loadUsersInRoom()">↺ Ver usuarios</button>
+            </div>
+            <div id="s-room-users" style="font-size:.78rem;color:var(--text-muted);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Logs ───────────────────────────────── -->
+      <div class="tab-content" id="tc-logs">
+        <div class="log-wrap">
+          <div class="log-toolbar">
+            <button class="act-btn act-muted" onclick="loadBotLogs('${bot.id}')">⟳ Cargar logs</button>
+            <button class="act-btn act-danger" onclick="clearLogs()">🗑 Limpiar</button>
+            <span id="log-status" style="margin-left:auto;font-size:.72rem;color:var(--text-muted);"></span>
+          </div>
+          <div class="log-box" id="log-box"><div style="color:var(--text-muted);">Haz clic en "Cargar logs"</div></div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Tab switching ──────────────────────────────
+  window.swTab = function(name, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tc-' + name)?.classList.add('active');
+  };
+
+  // ── Value helpers ──────────────────────────────
+  function vi(id) { return document.getElementById(id)?.value || ''; }
+
+  function updateStatusBar(bot) {
+    const el = document.querySelector('.status-pill');
+    if (!el) return;
+    const st = bot.status || 'offline';
+    el.textContent = st;
+    el.className = `status-pill pill-${st === 'online' ? 'online' : st === 'connecting' ? 'connecting' : st === 'error' ? 'error' : 'offline'}`;
+  }
+
+  // ── Bot controls ───────────────────────────────
+  window.botStart = async function(id) {
+    try { await BotsAPI.start(id); toast('▶ Bot iniciando…', 'success'); setTimeout(refreshBots, 1500); }
+    catch(e) { toast(e.message, 'danger'); }
+  };
+
+  window.botStop = async function(id) {
+    try { await BotsAPI.stop(id); toast('■ Bot detenido', 'success'); setTimeout(refreshBots, 1000); }
+    catch(e) { toast(e.message, 'danger'); }
+  };
+
+  // ── Action call ────────────────────────────────
+  window.botAct = async function(action, params = {}) {
+    if (!_selId) { toast('Selecciona un bot primero', 'danger'); return; }
+    // Limpiar el campo de texto tras enviar mensaje
+    const msgField = { say:'a-msg', shout:'a-msg', whisper:'a-wh-msg' }[action];
+    try {
+      await BotsAPI.action(_selId, action, params);
+      toast(`✓ ${action}`, 'success');
+      if (msgField) document.getElementById(msgField).value = '';
+    } catch(e) { toast(`✗ ${action}: ${e.message}`, 'danger'); }
+  };
+
+  // ── Nav search ─────────────────────────────────
+  window.navSearch = async function() {
+    if (!_selId) { toast('Selecciona un bot', 'danger'); return; }
+    const q = vi('m-query').trim();
+    if (!q) return;
+    try {
+      const res = await BotsAPI.action(_selId, 'nav_search', { query: q, count: 8 });
+      const rooms = res.result?.rooms || res.rooms || [];
+      const el = document.getElementById('m-results');
+      if (!rooms.length) { el.textContent = 'Sin resultados'; return; }
+      el.innerHTML = rooms.map(r =>
+        `<div style="padding:.3rem 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;">
+          <span style="flex:1;font-weight:600;">${r.name||r.roomName||r.id}</span>
+          <span style="color:var(--text-muted);">${r.usersNow??r.users??''}👥</span>
+          <button class="act-btn act-primary" style="padding:.2rem .5rem;font-size:.7rem;" onclick="botAct('join_room',{room_id:'${r.id||r.flatId}'})">Entrar</button>
+        </div>`
+      ).join('');
+    } catch(e) { toast(e.message, 'danger'); }
+  };
+
+  // ── Users in room ──────────────────────────────
+  window.loadUsersInRoom = async function() {
+    if (!_selId) return;
+    try {
+      const res = await BotsAPI.action(_selId, 'get_users', {});
+      const users = res.result?.users || res.users || [];
+      const el = document.getElementById('s-room-users');
+      if (!users.length) { el.textContent = 'Sin usuarios en la sala'; return; }
+      el.innerHTML = users.map(u =>
+        `<div style="padding:.25rem 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;gap:.5rem;">
+          <span style="flex:1;">${u.name||u.username||'?'}</span>
+          <button class="act-btn act-muted" style="padding:.15rem .45rem;font-size:.7rem;" onclick="document.getElementById('s-user').value='${(u.name||'').replace(/'/g,"\\'")}';toast('Usuario cargado','info')">Seleccionar</button>
+        </div>`
+      ).join('');
+    } catch(e) { toast(e.message,'danger'); }
+  };
+
+  // ── Logs ───────────────────────────────────────
+  window.loadBotLogs = async function(id) {
+    const box = document.getElementById('log-box');
+    const status = document.getElementById('log-status');
+    if (!box) return;
+    try {
+      if (status) status.textContent = 'Cargando…';
+      const result = await BotsAPI.action(id || _selId, 'get_log', {});
+      const lines  = result.result?.log || result.log || [];
+      if (!lines.length) { box.innerHTML = '<div style="color:var(--text-muted);">Sin logs disponibles</div>'; return; }
+      box.innerHTML = lines.map(l => {
+        const t   = typeof l === 'string' ? l : (l.msg || JSON.stringify(l));
+        const cls = t.includes('ERROR') || t.includes('error') ? 'log-err'
+                  : t.includes('WARN')  || t.includes('warn')  ? 'log-warn'
+                  : t.includes('✓')    || t.includes('[OK]')   ? 'log-ok'
+                  : 'log-info';
+        return `<p style="margin:0;" class="${cls}">${esc(t)}</p>`;
+      }).join('');
+      box.scrollTop = box.scrollHeight;
+      if (status) status.textContent = `${lines.length} líneas · ${new Date().toLocaleTimeString('es-ES')}`;
+    } catch(e) {
+      box.innerHTML = `<div style="color:var(--danger);">Error: ${e.message}</div>`;
+      if (status) status.textContent = '';
+    }
+  };
+
+  window.clearLogs = function() {
+    const box = document.getElementById('log-box');
+    if (box) box.innerHTML = '<div style="color:var(--text-muted);">Logs limpiados</div>';
+  };
+
+  // ── Rent modal ─────────────────────────────────
+  window.openRentModal = async function() {
+    await loadCredits();
+    updateRentCost();
+    document.getElementById('rent-modal').classList.add('open');
+  };
+  window.closeRentModal = function() {
+    document.getElementById('rent-modal').classList.remove('open');
+  };
+
+  window.selectRentPlan = function(key) {
+    _rentPlan = key;
+    document.querySelectorAll('.plan-opt').forEach(el => el.classList.remove('sel'));
+    document.getElementById('rp-' + key).classList.add('sel');
+    updateRentCost();
+  };
+
+  window.selectRentQty = function(n) {
+    _rentQty = n;
+    document.querySelectorAll('.qty-opt').forEach(el => el.classList.remove('sel'));
+    document.getElementById('rq-' + n).classList.add('sel');
+    updateRentCost();
+  };
+
+  function updateRentCost() {
+    const plan  = PLANS[_rentPlan];
+    const total = plan.credits * _rentQty;
+    document.getElementById('rent-cost').textContent = `${total.toLocaleString()} créditos`;
+    document.getElementById('rent-balance').textContent = _credits.toLocaleString();
+  }
+
+  window.doRentBot = async function() {
+    const name  = (document.getElementById('rent-name').value || 'MiBot').trim();
+    const hotel = document.getElementById('rent-hotel').value;
+    const room  = document.getElementById('rent-room').value.trim();
+    const plan  = PLANS[_rentPlan];
+    const total = plan.credits * _rentQty;
+    if (_credits < total) { toast(`Créditos insuficientes (${total} cr)`, 'danger'); return; }
+    try {
+      const token = sessionStorage.getItem('hb_token');
+      const resp  = await fetch('/api/bots', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+        body: JSON.stringify({ name, hotel, room: room||undefined, duration:_rentPlan, quantity:_rentQty }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || `Error ${resp.status}`);
+      closeRentModal();
+      const qty = data.quantity || 1;
+      toast(`${qty} bot${qty>1?'s':''} contratado${qty>1?'s':''}! · ${total} cr`, 'success');
+      _credits -= total;
+      document.getElementById('nav-credits-top').textContent = _credits.toLocaleString();
+      refreshBots();
+    } catch(e) { toast(e.message, 'danger'); }
+  };
+
+  // ── Utils ──────────────────────────────────────
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // ── Init ───────────────────────────────────────
+  window.refreshBots = refreshBots;
+  refreshBots();
+  setInterval(refreshBots, 20_000);
+})();
+</script>
+</body>
+</html>

@@ -58,11 +58,12 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     /* Habbo-style title bar */
     .hb-titlebar {
       display: flex;
-      align-items: center;
-      padding: .5rem .85rem;
+      align-items: stretch;
+      padding: 0 .85rem 0 0;
       background: linear-gradient(90deg, #0a3a6e, #1a1650);
       border-bottom: 2px solid #000;
-      gap: .5rem;
+      gap: .65rem;
+      min-height: 56px;
     }
     .hb-titlebar h2 {
       flex: 1;
@@ -72,23 +73,19 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       color: #fff;
       text-shadow: 1px 1px 2px #000;
       text-align: center;
+      display: flex; align-items: center; justify-content: center;
     }
     .hb-logo {
-      display: flex; align-items: center; gap: .5rem;
-      font-family: 'Orbitron', sans-serif;
-      font-size: .85rem; font-weight: 700;
-      background: var(--gradient-main);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
+      display: flex; align-items: stretch; flex-shrink: 0;
     }
     .hb-logo-icon {
-      width: 26px; height: 26px;
-      background: var(--gradient-main);
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 10px; font-weight: 900; color: #fff;
+      width: 200px;
+      overflow: hidden;
+      display: flex; align-items: stretch; justify-content: center;
+      background: rgba(0,0,0,.25);
+      border-right: 1px solid rgba(0,195,255,.15);
     }
+    .hb-logo-icon img { width: 100%; height: 100%; object-fit: contain; }
 
     /* Tabs */
     .auth-tabs {
@@ -117,6 +114,71 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 
     .auth-form { display: none; flex-direction: column; }
     .auth-form.active { display: flex; }
+
+    /* Multi-step register */
+    .reg-step { display: none; flex-direction: column; gap: 0; }
+    .reg-step.active { display: flex; }
+
+    .reg-step-indicator {
+      display: flex; align-items: center; gap: .4rem;
+      margin-bottom: 1rem; font-size: .75rem; color: var(--text-muted);
+    }
+    .reg-step-dot {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(0,195,255,.08); border: 1px solid rgba(0,195,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .7rem; font-weight: 700; color: var(--text-muted);
+      flex-shrink: 0; transition: all .2s;
+    }
+    .reg-step-dot.done  { background: rgba(0,195,255,.15); border-color: var(--blue-primary); color: var(--blue-primary); }
+    .reg-step-dot.current { background: rgba(155,48,255,.2); border-color: var(--purple-primary); color: var(--purple-primary); }
+    .reg-step-line { flex: 1; height: 1px; background: rgba(0,195,255,.15); }
+
+    .code-box {
+      background: rgba(155,48,255,.08);
+      border: 2px dashed rgba(155,48,255,.4);
+      border-radius: 8px; padding: .85rem; text-align: center;
+      margin: .6rem 0 .85rem;
+    }
+    .code-text {
+      font-family: 'Orbitron', monospace; font-size: 1.35rem; font-weight: 800;
+      color: #9b30ff; letter-spacing: .25em; display: block;
+    }
+    .code-copy-btn {
+      margin-top: .5rem; padding: .25rem .7rem; font-size: .75rem;
+      background: rgba(155,48,255,.15); border: 1px solid rgba(155,48,255,.3);
+      border-radius: 4px; color: #9b30ff; cursor: pointer;
+    }
+    .code-copy-btn:hover { background: rgba(155,48,255,.25); }
+
+    .hotel-select {
+      width: 100%; padding: .55rem .85rem;
+      background: var(--bg-input, rgba(0,0,0,.4));
+      border: 1px solid var(--border-glow, rgba(0,195,255,.2));
+      border-radius: 6px; color: var(--text-primary, #fff);
+      font-size: .9rem; cursor: pointer;
+    }
+    .hotel-select option { background: #0d1428; }
+
+    .btn-back {
+      background: none; border: 1px solid rgba(0,195,255,.2);
+      border-radius: 6px; color: var(--text-muted); padding: .5rem;
+      font-size: .85rem; cursor: pointer; text-align: center;
+      transition: all .2s; margin-top: .4rem;
+    }
+    .btn-back:hover { border-color: rgba(0,195,255,.4); color: var(--text-secondary); }
+
+    .reg-success {
+      text-align: center; padding: 1.25rem 0;
+      display: flex; flex-direction: column; align-items: center; gap: .75rem;
+    }
+    .reg-success-icon {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(0,195,255,.1); border: 2px solid rgba(0,195,255,.3);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .reg-success h3 { margin: 0; font-size: 1.05rem; color: #fff; }
+    .reg-success p  { margin: 0; font-size: .82rem; color: var(--text-muted); line-height: 1.6; }
 
     .input-wrapper { position: relative; display: flex; align-items: center; }
     .input-icon {
@@ -188,6 +250,12 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       display: flex; flex-direction: column;
       background: linear-gradient(135deg, rgba(0,60,120,.2), rgba(80,0,160,.25));
       position: relative; overflow: hidden;
+    }
+    .welcome-bg {
+      position: absolute; inset: 0;
+      background-image: url('/assets/images/bg.png');
+      background-size: cover; background-position: center;
+      opacity: .18; z-index: 0;
     }
 
     /* Habbo-style title bar for welcome */
@@ -283,8 +351,9 @@ import AuthLayout from '../layouts/AuthLayout.astro';
           <!-- Habbo-style title bar -->
           <div class="hb-titlebar">
             <div class="hb-logo">
-              <div class="hb-logo-icon">HB</div>
-              HabboBots
+              <div class="hb-logo-icon">
+                <img src="/assets/images/logo.gif" alt="HabboBots" />
+              </div>
             </div>
             <h2>Acceder / Registrarse</h2>
           </div>
@@ -300,12 +369,12 @@ import AuthLayout from '../layouts/AuthLayout.astro';
             <!-- LOGIN -->
             <form id="form-login" class="auth-form active" onsubmit="handleLogin(event)">
               <div class="form-group">
-                <label class="form-label">Email o usuario</label>
+                <label class="form-label">Email</label>
                 <div class="input-wrapper">
                   <span class="input-icon">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                   </span>
-                  <input type="text" class="form-input" placeholder="usuario o email" required />
+                  <input type="email" id="login-email" class="form-input" placeholder="tu@email.com" required />
                 </div>
               </div>
               <div class="form-group">
@@ -337,58 +406,120 @@ import AuthLayout from '../layouts/AuthLayout.astro';
               </p>
             </form>
 
-            <!-- REGISTER -->
-            <form id="form-register" class="auth-form" onsubmit="handleRegister(event)">
-              <div class="form-group">
-                <label class="form-label">Usuario</label>
-                <div class="input-wrapper">
-                  <span class="input-icon">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  </span>
-                  <input type="text" id="reg-user" class="form-input" placeholder="tu_usuario" oninput="checkUsername(this.value)" required />
-                </div>
-                <div class="input-hint" id="username-status"></div>
+            <!-- REGISTER MULTI-STEP -->
+            <div id="form-register" class="auth-form">
+
+              <!-- Indicador de pasos -->
+              <div class="reg-step-indicator">
+                <span class="reg-step-dot current" id="sdot-1">1</span>
+                <span class="reg-step-line"></span>
+                <span class="reg-step-dot" id="sdot-2">2</span>
+                <span class="reg-step-line"></span>
+                <span class="reg-step-dot" id="sdot-3">3</span>
               </div>
-              <div class="form-group">
-                <label class="form-label">Email</label>
-                <div class="input-wrapper">
-                  <span class="input-icon">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                  </span>
-                  <input type="email" class="form-input" placeholder="tu@email.com" required />
+
+              <!-- PASO 1: Datos básicos -->
+              <div id="reg-step-1" class="reg-step active">
+                <div class="form-group">
+                  <label class="form-label">Email</label>
+                  <div class="input-wrapper">
+                    <span class="input-icon">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    </span>
+                    <input type="email" id="reg-email" class="form-input" placeholder="tu@email.com" required />
+                  </div>
                 </div>
+                <div class="form-group">
+                  <label class="form-label">Contraseña</label>
+                  <div class="input-wrapper">
+                    <span class="input-icon">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </span>
+                    <input type="password" id="reg-pass" class="form-input" placeholder="Mínimo 8 caracteres" required />
+                    <button type="button" class="input-action" onclick="togglePassword('reg-pass')">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <button type="button" id="btn-step1" class="hb-btn-submit" onclick="handlePreRegister()">
+                  Siguiente — Verificar Habbo
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+                <div class="auth-divider">o regístrate con</div>
+                <button type="button" class="btn-discord" onclick="loginWithDiscord()">
+                  <svg width="18" height="14" viewBox="0 0 71 55" fill="#fff"><path d="M60.1 4.9A58.55 58.55 0 0 0 45.6.3a40.2 40.2 0 0 0-1.8 3.6 54.3 54.3 0 0 0-16.2 0A38.6 38.6 0 0 0 25.8.3 58.46 58.46 0 0 0 11.3 4.9C1.6 19.2-.98 33.1.31 46.8a59.09 59.09 0 0 0 18 9.1 42.07 42.07 0 0 0 3.7-6 38.35 38.35 0 0 1-5.8-2.8c.49-.35.97-.72 1.43-1.1a42.1 42.1 0 0 0 35.68 0c.47.38.95.75 1.43 1.1a38.46 38.46 0 0 1-5.82 2.8 41.94 41.94 0 0 0 3.7 6 58.89 58.89 0 0 0 18.02-9.1C72.48 30.9 68.47 17.1 60.1 4.9Z"/></svg>
+                  Continuar con Discord
+                </button>
+                <p class="auth-footer-text">
+                  Al registrarte aceptas los <a href="/terminos">Términos</a> y la <a href="/privacidad">Privacidad</a>
+                </p>
               </div>
-              <div class="form-group">
-                <label class="form-label">Contraseña</label>
-                <div class="input-wrapper">
-                  <span class="input-icon">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  </span>
-                  <input type="password" id="reg-pass" class="form-input" placeholder="Mínimo 8 caracteres" required />
-                  <button type="button" class="input-action" onclick="togglePassword('reg-pass')">
-                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+
+              <!-- PASO 2: Verificar Habbo -->
+              <div id="reg-step-2" class="reg-step">
+                <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .5rem;line-height:1.5;">
+                  Pon este código como tu <strong style="color:#fff;">misión (motto)</strong> en Habbo, luego escribe tu nick y haz clic en verificar:
+                </p>
+                <div class="code-box">
+                  <span class="code-text" id="reg-motto-code">HB-??????</span>
+                  <button class="code-copy-btn" onclick="copyCode()">Copiar</button>
+                </div>
+                <div class="form-group" style="margin-bottom:.6rem;">
+                  <label class="form-label">Hotel</label>
+                  <select id="reg-hotel" class="hotel-select">
+                    <option value="es">habbo.es</option>
+                    <option value="com">habbo.com</option>
+                    <option value="br">habbo.com.br</option>
+                    <option value="tr">habbo.com.tr</option>
+                    <option value="fi">habbo.fi</option>
+                    <option value="de">habbo.de</option>
+                    <option value="fr">habbo.fr</option>
+                    <option value="it">habbo.it</option>
+                    <option value="nl">habbo.nl</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Nick en Habbo</label>
+                  <div class="input-wrapper">
+                    <span class="input-icon">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </span>
+                    <input type="text" id="reg-habboname" class="form-input" placeholder="TuNickEnHabbo" required />
+                  </div>
+                </div>
+                <button type="button" id="btn-step2" class="hb-btn-submit" onclick="handleRegister()">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  Verificar y crear cuenta
+                </button>
+                <button type="button" class="btn-back" onclick="goToRegStep(1)">← Volver</button>
+              </div>
+
+              <!-- PASO 3: Éxito -->
+              <div id="reg-step-3" class="reg-step">
+                <div class="reg-success">
+                  <div class="reg-success-icon">
+                    <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="#00c3ff"/><polyline points="22,6 12,13 2,6" stroke="#00c3ff"/></svg>
+                  </div>
+                  <h3>¡Cuenta creada!</h3>
+                  <p id="reg-success-msg">Te enviamos un email de verificación. Haz clic en el enlace para activar tu cuenta.</p>
+                  <button type="button" class="hb-btn-submit" onclick="switchTab('login')" style="margin-top:.5rem;">
+                    Ir a iniciar sesión
                   </button>
+                  <p style="font-size:.75rem;color:var(--text-muted);margin-top:.5rem;">
+                    ¿No llegó el email?
+                    <a href="#" id="resend-link" onclick="handleResendEmail(); return false;" style="color:var(--blue-primary);">Reenviar</a>
+                  </p>
                 </div>
               </div>
-              <button type="submit" class="hb-btn-submit">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                Crear cuenta
-              </button>
-              <div class="auth-divider">o regístrate con</div>
-              <button type="button" class="btn-discord" onclick="loginWithDiscord()">
-                <svg width="18" height="14" viewBox="0 0 71 55" fill="#fff"><path d="M60.1 4.9A58.55 58.55 0 0 0 45.6.3a40.2 40.2 0 0 0-1.8 3.6 54.3 54.3 0 0 0-16.2 0A38.6 38.6 0 0 0 25.8.3 58.46 58.46 0 0 0 11.3 4.9C1.6 19.2-.98 33.1.31 46.8a59.09 59.09 0 0 0 18 9.1 42.07 42.07 0 0 0 3.7-6 38.35 38.35 0 0 1-5.8-2.8c.49-.35.97-.72 1.43-1.1a42.1 42.1 0 0 0 35.68 0c.47.38.95.75 1.43 1.1a38.46 38.46 0 0 1-5.82 2.8 41.94 41.94 0 0 0 3.7 6 58.89 58.89 0 0 0 18.02-9.1C72.48 30.9 68.47 17.1 60.1 4.9Z"/></svg>
-                Continuar con Discord
-              </button>
-              <p class="auth-footer-text">
-                Al registrarte aceptas los <a href="/terminos">Términos</a> y la <a href="/privacidad">Privacidad</a>
-              </p>
-            </form>
+
+            </div>
 
           </div>
         </div>
 
         <!-- RIGHT: Welcome panel -->
         <div class="auth-welcome-panel">
+          <div class="welcome-bg"></div>
           <div class="welcome-grid"></div>
           <div class="welcome-glow"></div>
 
@@ -428,14 +559,29 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     // Redirige si ya está logueado
     if (Auth.isLoggedIn()) window.location.href = '/dashboard';
 
-    // Online count (stub; reemplaza con WebSocket real si quieres)
-    setTimeout(() => {
-      document.getElementById('online-count').textContent = Math.floor(Math.random() * 300 + 150);
-    }, 600);
+    // Usuarios activos en los últimos 5 minutos (dato real del servidor)
+    (async () => {
+      try {
+        const res  = await fetch('/api/stats/online');
+        const data = await res.json();
+        document.getElementById('online-count').textContent = data.online ?? 0;
+      } catch {
+        document.getElementById('online-count').textContent = '—';
+      }
+    })();
+    // Actualizar cada 30 segundos
+    setInterval(async () => {
+      try {
+        const res  = await fetch('/api/stats/online');
+        const data = await res.json();
+        document.getElementById('online-count').textContent = data.online ?? 0;
+      } catch {}
+    }, 30000);
 
+    // ── Login ─────────────────────────────────────────
     async function handleLogin(e) {
       e.preventDefault();
-      const identifier = document.querySelector('#form-login input[type="text"]').value;
+      const identifier = document.getElementById('login-email').value;
       const password   = document.getElementById('login-pass').value;
       const btn = e.submitter;
       btn.disabled = true;
@@ -444,30 +590,108 @@ import AuthLayout from '../layouts/AuthLayout.astro';
         const { token, user } = await AuthAPI.login(identifier, password);
         Auth.setToken(token);
         showToast(`¡Bienvenido, ${user.username}!`, 'success');
-        setTimeout(() => { window.location.href = '/dashboard'; }, 700);
+        const dest = (user.role === 'admin' || user.role === 'moderator') ? '/dashboard' : '/home';
+        setTimeout(() => { window.location.href = dest; }, 700);
       } catch (err) {
-        showToast(err.message || 'Error al iniciar sesión', 'danger');
+        // Email no verificado → mostrar opción de reenvío
+        if (err.data && err.data.code === 'EMAIL_UNVERIFIED') {
+          showToast('Verifica tu email antes de entrar. Revisa tu bandeja de entrada.', 'warning');
+          // Guardar email para el reenvío
+          window._unverifiedEmail = err.data.email || identifier;
+        } else {
+          showToast(err.message || 'Error al iniciar sesión', 'danger');
+        }
         btn.disabled = false;
       }
     }
 
-    async function handleRegister(e) {
-      e.preventDefault();
-      const username = document.getElementById('reg-user').value;
-      const email    = document.querySelector('#form-register input[type="email"]').value;
+    // ── Registro Paso 1: datos básicos ────────────────
+    let _pendingId = null;
+    let _regEmail  = null;
+
+    async function handlePreRegister() {
+      const email    = document.getElementById('reg-email').value.trim();
       const password = document.getElementById('reg-pass').value;
-      const btn = e.submitter;
-      btn.disabled = true;
-      showToast('Creando cuenta…', 'info');
-      try {
-        const { token, user } = await AuthAPI.register(username, email, password);
-        Auth.setToken(token);
-        showToast(`¡Bienvenido, ${user.username}!`, 'success');
-        setTimeout(() => { window.location.href = '/dashboard'; }, 700);
-      } catch (err) {
-        showToast(err.message || 'Error al registrarse', 'danger');
-        btn.disabled = false;
+      if (!email || !password) {
+        showToast('Rellena todos los campos', 'warning'); return;
       }
+      if (password.length < 8) {
+        showToast('La contraseña debe tener mínimo 8 caracteres', 'warning'); return;
+      }
+      const btn = document.getElementById('btn-step1');
+      btn.disabled = true;
+      btn.textContent = 'Comprobando…';
+      try {
+        const { pendingId, code } = await AuthAPI.preRegister(email, password);
+        _pendingId = pendingId;
+        _regEmail  = email;
+        document.getElementById('reg-motto-code').textContent = code;
+        goToRegStep(2);
+      } catch (err) {
+        showToast(err.message || 'Error al iniciar registro', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = 'Siguiente — Verificar Habbo <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+      }
+    }
+
+    // ── Registro Paso 2: verificar motto ──────────────
+    async function handleRegister() {
+      const hotel     = document.getElementById('reg-hotel').value;
+      const habboName = document.getElementById('reg-habboname').value.trim();
+      if (!habboName) { showToast('Escribe tu nick de Habbo', 'warning'); return; }
+      if (!_pendingId) { showToast('Sesión expirada. Empieza de nuevo.', 'danger'); goToRegStep(1); return; }
+
+      const btn = document.getElementById('btn-step2');
+      btn.disabled = true;
+      btn.textContent = 'Verificando motto en Habbo…';
+      try {
+        const { username } = await AuthAPI.register(_pendingId, hotel, habboName);
+        goToRegStep(3);
+        document.getElementById('reg-success-msg').textContent =
+          `Te enviamos un email a ${_regEmail}. Haz clic en el enlace para activar tu cuenta de ${username}.`;
+        showToast('¡Cuenta creada! Revisa tu email.', 'success');
+      } catch (err) {
+        const msg = err.data?.hint
+          ? `${err.message} ${err.data.hint}`
+          : (err.message || 'Error al verificar');
+        showToast(msg, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Verificar y crear cuenta';
+      }
+    }
+
+    // ── Reenviar email ────────────────────────────────
+    async function handleResendEmail() {
+      const email = _regEmail || window._unverifiedEmail;
+      if (!email) { showToast('No se encontró el email', 'warning'); return; }
+      const link = document.getElementById('resend-link');
+      if (link) { link.textContent = 'Enviando…'; link.style.pointerEvents = 'none'; }
+      try {
+        await AuthAPI.resendEmail(email);
+        showToast('Email de verificación reenviado', 'success');
+      } catch (err) {
+        showToast(err.message || 'Error al reenviar', 'danger');
+      }
+      if (link) { link.textContent = 'Reenviar'; link.style.pointerEvents = ''; }
+    }
+
+    // ── Navegación entre pasos ────────────────────────
+    function goToRegStep(n) {
+      [1,2,3].forEach(i => {
+        const step = document.getElementById(`reg-step-${i}`);
+        const dot  = document.getElementById(`sdot-${i}`);
+        if (step) step.classList.toggle('active', i === n);
+        if (dot) {
+          dot.classList.remove('done', 'current');
+          if (i < n)  dot.classList.add('done');
+          if (i === n) dot.classList.add('current');
+        }
+      });
+    }
+
+    function copyCode() {
+      const code = document.getElementById('reg-motto-code').textContent;
+      navigator.clipboard.writeText(code).then(() => showToast('Código copiado', 'success'));
     }
 
     function loginWithDiscord() {

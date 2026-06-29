@@ -1,0 +1,187 @@
+---
+import DashLayout from '../layouts/DashLayout.astro';
+---
+<DashLayout title="Afiliados" activePage="afiliados">
+<style>
+  .aff-hero {
+    background: linear-gradient(135deg, rgba(155,48,255,.15), rgba(0,195,255,.08));
+    border: 1px solid rgba(155,48,255,.25);
+    border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem; text-align: center;
+  }
+  .aff-hero h2 { font-family:'Orbitron',sans-serif; font-size:1.4rem; color:#fff; margin:0 0 .5rem; }
+  .aff-hero p  { color: var(--text-muted); font-size:.9rem; margin:0 0 1.5rem; }
+
+  .link-box {
+    display: flex; gap: .6rem; align-items: center; justify-content: center; flex-wrap: wrap;
+  }
+  .link-input {
+    flex: 1; min-width: 220px; max-width: 460px;
+    padding: .6rem 1rem; background: rgba(0,0,0,.4);
+    border: 1px solid rgba(155,48,255,.35); border-radius: 8px;
+    color: #a78bfa; font-size: .9rem; font-family: monospace;
+  }
+  .btn-copy {
+    padding: .6rem 1.2rem; background: linear-gradient(135deg,#9b30ff,#6010cc);
+    border: none; border-radius: 8px; color:#fff; font-weight:700; cursor:pointer;
+    transition: opacity .15s;
+  }
+  .btn-copy:hover { opacity:.85; }
+  .copy-ok { font-size:.78rem; color: var(--success); margin-top:.4rem; min-height:1rem; }
+
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: var(--bg-card); border: 1px solid var(--border-glow);
+    border-radius: 12px; padding: 1.1rem 1rem; text-align: center;
+  }
+  .stat-val { font-family:'Orbitron',sans-serif; font-size:1.6rem; font-weight:800; color: var(--blue-primary); }
+  .stat-lbl { font-size:.72rem; color: var(--text-muted); text-transform:uppercase; letter-spacing:.6px; margin-top:.2rem; }
+
+  .section-title {
+    font-size:.8rem; font-weight:700; text-transform:uppercase;
+    letter-spacing:.8px; color: var(--text-muted); margin-bottom:.75rem;
+  }
+  .referred-list { display: flex; flex-direction: column; gap: .5rem; }
+  .referred-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: .7rem 1rem; background: var(--bg-card);
+    border: 1px solid var(--border-glow); border-radius: 10px;
+  }
+  .referred-name { font-weight:600; color:#fff; font-size:.88rem; }
+  .referred-date { font-size:.75rem; color: var(--text-muted); }
+  .badge-rewarded { background:rgba(0,255,163,.12); color: var(--success); padding:.15rem .5rem; border-radius:20px; font-size:.68rem; font-weight:700; }
+  .badge-pending  { background:rgba(255,190,0,.12); color: var(--warning); padding:.15rem .5rem; border-radius:20px; font-size:.68rem; font-weight:700; }
+
+  .how-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .how-card {
+    background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: 12px;
+    padding: 1.2rem; text-align: center;
+  }
+  .how-icon { font-size: 2rem; margin-bottom: .6rem; }
+  .how-title { font-weight: 700; color: #fff; font-size: .9rem; margin-bottom: .3rem; }
+  .how-desc  { font-size: .78rem; color: var(--text-muted); line-height: 1.5; }
+  .how-pill  { display:inline-block; margin-top:.5rem; padding:.2rem .65rem; border-radius:20px;
+               background:rgba(155,48,255,.15); color:#c084fc; font-size:.72rem; font-weight:700; }
+
+  .empty-state { text-align:center; padding:2rem 1rem; color: var(--text-muted); font-size:.88rem; }
+
+  #aff-error { display:none; background:rgba(255,60,60,.1); border:1px solid rgba(255,60,60,.3);
+               border-radius:8px; padding:.8rem 1rem; color:var(--danger); font-size:.85rem; margin-bottom:1rem; }
+</style>
+
+<!-- Error -->
+<div id="aff-error"></div>
+
+<!-- Hero con el link -->
+<div class="aff-hero">
+  <h2>💜 Programa de Afiliados</h2>
+  <p>Comparte tu enlace único. Gana créditos gratis cada vez que alguien se registre y haga su primer pedido.</p>
+  <div class="link-box">
+    <input type="text" class="link-input" id="ref-link" value="Cargando…" readonly>
+    <button class="btn-copy" onclick="copyLink()">Copiar</button>
+  </div>
+  <div class="copy-ok" id="copy-ok"></div>
+</div>
+
+<!-- Cómo funciona -->
+<div class="how-grid">
+  <div class="how-card">
+    <div class="how-icon">🔗</div>
+    <div class="how-title">1. Comparte tu enlace</div>
+    <div class="how-desc">Envía tu link a amigos de Habbo o publícalo donde quieras.</div>
+  </div>
+  <div class="how-card">
+    <div class="how-icon">👤</div>
+    <div class="how-title">2. Se registran</div>
+    <div class="how-desc">Tu referido se registra usando tu código. Recibe <span class="how-pill">+50 cr</span> de bienvenida.</div>
+  </div>
+  <div class="how-card">
+    <div class="how-icon">💎</div>
+    <div class="how-title">3. Tú cobras</div>
+    <div class="how-desc">Cuando hace su primer pedido, tú recibes automáticamente <span class="how-pill">+100 cr</span>.</div>
+  </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-val" id="stat-refs">—</div>
+    <div class="stat-lbl">Referidos</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" id="stat-active">—</div>
+    <div class="stat-lbl">Con pedido</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--success)" id="stat-credits">—</div>
+    <div class="stat-lbl">Créditos ganados</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--warning)" id="stat-pending">—</div>
+    <div class="stat-lbl">Pendientes</div>
+  </div>
+</div>
+
+<!-- Lista de referidos -->
+<div class="section-title">Tus referidos</div>
+<div class="referred-list" id="referred-list">
+  <div class="empty-state">Cargando…</div>
+</div>
+
+<script>
+let _affData = null;
+
+async function loadAffiliate() {
+  const errEl = document.getElementById('aff-error');
+  try {
+    const d = await AffiliatesAPI.my();
+    _affData = d;
+
+    document.getElementById('ref-link').value  = d.url;
+    document.getElementById('stat-refs').textContent    = d.totalReferrals;
+    document.getElementById('stat-active').textContent  = d.referred.filter(r => r.rewarded).length;
+    document.getElementById('stat-credits').textContent = d.totalRewards + ' cr';
+    document.getElementById('stat-pending').textContent = d.pendingRewards;
+
+    const list = document.getElementById('referred-list');
+    if (!d.referred.length) {
+      list.innerHTML = `<div class="empty-state">Aún no tienes referidos. ¡Comparte tu enlace!</div>`;
+      return;
+    }
+    list.innerHTML = d.referred.map(r => `
+      <div class="referred-row">
+        <div>
+          <div class="referred-name">${r.username}</div>
+          <div class="referred-date">Se registró: ${new Date(r.created_at).toLocaleDateString('es-ES')}</div>
+        </div>
+        <span class="${r.rewarded ? 'badge-rewarded' : 'badge-pending'}">
+          ${r.rewarded ? '✅ Recompensado' : '⏳ Sin pedido aún'}
+        </span>
+      </div>
+    `).join('');
+  } catch (e) {
+    errEl.style.display = 'block';
+    errEl.textContent   = e.message;
+  }
+}
+
+function copyLink() {
+  const val = document.getElementById('ref-link').value;
+  navigator.clipboard.writeText(val).then(() => {
+    const ok = document.getElementById('copy-ok');
+    ok.textContent = '✓ Copiado al portapapeles';
+    setTimeout(() => { ok.textContent = ''; }, 2500);
+  }).catch(() => {
+    document.getElementById('ref-link').select();
+    document.execCommand('copy');
+  });
+}
+
+loadAffiliate();
+</script>
+</DashLayout>

@@ -1,0 +1,13 @@
+{
+  "name": "HabboBOTS",
+  "short_name": "HabboBOTS",
+  "description": "Automatización de bots para Habbo Hotel",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#080818",
+  "theme_color": "#00c3ff",
+  "icons": [
+    { "src": "/assets/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

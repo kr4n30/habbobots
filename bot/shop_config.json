@@ -1,0 +1,8 @@
+{
+  "DISCORD_CLIENT_ID":     "TU_APP_ID_AQUI",
+  "DISCORD_CLIENT_SECRET": "TU_SECRET_AQUI",
+  "DISCORD_REDIRECT_URI":  "http://localhost:5001/auth/callback",
+  "FIRST_ADMIN_DISCORD_ID":"TU_DISCORD_ID_AQUI",
+  "SHOP_SECRET":           "cambia_esto_por_secrets_token_hex_32",
+  "SHOP_PORT":             "5001"
+}

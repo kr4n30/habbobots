@@ -1,337 +1,1080 @@
 ---
 import DashLayout from '../layouts/DashLayout.astro';
 ---
-<DashLayout title="Dashboard" activePage="dashboard">
+<DashLayout title="Admin Panel" activePage="dashboard">
   <style>
-    .page-header { margin-bottom: 1.75rem; }
-    .page-header h1 { font-family:'Orbitron',sans-serif; font-size:1.3rem; font-weight:700; }
-    .page-header p { color:var(--text-muted); font-size:.88rem; margin-top:.2rem; }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4,1fr);
-      gap: 1rem;
-      margin-bottom: 1.75rem;
+    /* ── Tabs ──────────────────────────────────────── */
+    .admin-tabs {
+      display: flex; gap: .5rem; margin-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(0,195,255,.12); padding-bottom: .5rem;
+      flex-wrap: wrap;
     }
-    .stat-card { padding:1.25rem 1.5rem; }
-    .stat-icon {
-      width:38px; height:38px; border-radius:10px;
-      display:flex; align-items:center; justify-content:center;
-      margin-bottom:.65rem;
+    .admin-tab {
+      padding: .45rem 1rem; border-radius: 8px 8px 0 0;
+      background: none; border: none; color: var(--text-muted);
+      font-size: .85rem; font-weight: 600; cursor: pointer;
+      transition: all .15s;
     }
-    .icon-blue   { background:rgba(0,195,255,.12); color:var(--blue-primary); }
-    .icon-purple { background:rgba(155,48,255,.12); color:var(--purple-primary); }
-    .icon-green  { background:rgba(0,255,163,.12); color:var(--success); }
-    .icon-yellow { background:rgba(255,190,0,.12); color:var(--warning); }
-    .stat-val { font-family:'Orbitron',sans-serif; font-size:1.55rem; font-weight:700; }
-    .stat-lbl { font-size:.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.8px; margin-top:.15rem; }
-    .stat-ch  { font-size:.74rem; margin-top:.4rem; display:flex; align-items:center; gap:.25rem; }
-    .stat-ch.up   { color:var(--success); }
-    .stat-ch.down { color:var(--danger); }
+    .admin-tab.active { background: rgba(0,195,255,.12); color: var(--blue-primary); }
+    .admin-tab:hover:not(.active) { color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
 
-    .content-grid {
-      display: grid;
-      grid-template-columns: 1fr 330px;
-      gap: 1.5rem;
+    /* ── Overview cards ─────────────────────────────── */
+    .overview-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: .85rem;
+      margin-bottom: 1.5rem;
     }
-
-    .section-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-    .section-title { font-family:'Orbitron',sans-serif; font-size:.85rem; font-weight:700; }
-
-    .bot-row { display:flex; align-items:center; gap:1rem; padding:.8rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
-    .bot-row:last-of-type { border-bottom:none; }
-    .bot-av-wrap { position:relative; flex-shrink:0; }
-    .bot-av { width:40px; height:40px; border-radius:10px; background:rgba(0,195,255,.08); border:1px solid var(--border-glow); display:flex; align-items:center; justify-content:center; overflow:hidden; }
-    .bot-dot { position:absolute; bottom:-2px; right:-2px; width:10px; height:10px; border-radius:50%; border:2px solid var(--bg-dark); }
-    .dot-on  { background:var(--success); }
-    .dot-off { background:var(--text-muted); }
-    .dot-busy{ background:var(--warning); }
-    .bot-info { flex:1; min-width:0; }
-    .bot-name { font-weight:600; font-size:.88rem; }
-    .bot-meta { font-size:.74rem; color:var(--text-muted); margin-top:.1rem; }
-    .bot-acts { display:flex; gap:.4rem; }
-
-    /* credit card */
-    .credit-card {
-      background: linear-gradient(135deg,rgba(0,120,255,.2),rgba(130,0,255,.3));
-      border: 1px solid rgba(155,48,255,.3);
-      border-radius:14px; padding:1.4rem; position:relative; overflow:hidden;
-      margin-bottom:1rem;
+    .ov-card {
+      background: var(--bg-card); border: 1px solid var(--border-glow);
+      border-radius: 12px; padding: 1rem 1.1rem;
     }
-    .credit-card::before {
-      content:''; position:absolute; top:-40px; right:-40px;
-      width:160px; height:160px; border-radius:50%;
-      background:radial-gradient(circle,rgba(155,48,255,.25) 0%,transparent 70%);
+    .ov-val { font-family:'Orbitron',sans-serif; font-size: 1.5rem; font-weight: 800; }
+    .ov-lbl { font-size: .72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .7px; margin-top: .15rem; }
+
+    /* ── Table ──────────────────────────────────────── */
+    .admin-table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    th { text-align: left; padding: .65rem .75rem; color: var(--text-muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .6px; border-bottom: 1px solid rgba(255,255,255,.06); white-space: nowrap; }
+    td { padding: .65rem .75rem; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* ── Search bar ─────────────────────────────────── */
+    .admin-toolbar {
+      display: flex; gap: .65rem; margin-bottom: 1rem; flex-wrap: wrap;
     }
-    .credit-lbl { font-size:.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:.25rem; }
-    .credit-amt { font-family:'Orbitron',sans-serif; font-size:2rem; font-weight:800; }
-    .credit-sub { font-size:.75rem; color:var(--text-muted); margin-top:.15rem; }
-
-    /* quick actions */
-    .quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
-    .quick-btn {
-      display:flex; flex-direction:column; align-items:center; gap:.4rem;
-      padding:.85rem; background:var(--bg-card);
-      border:1px solid var(--border-glow); border-radius:10px;
-      color:var(--text-secondary); text-decoration:none;
-      font-size:.78rem; font-weight:500; cursor:pointer;
-      transition:all .2s;
+    .admin-toolbar input, .admin-toolbar select {
+      padding: .45rem .8rem; background: rgba(0,0,0,.3);
+      border: 1px solid var(--border-glow); border-radius: 7px;
+      color: #fff; font-size: .84rem; min-width: 0;
     }
-    .quick-btn:hover { border-color:var(--blue-primary); color:var(--blue-primary); background:rgba(0,195,255,.06); }
-    .quick-ic { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; }
+    .admin-toolbar input::placeholder { color: var(--text-muted); }
+    .admin-toolbar input { flex: 1; min-width: 180px; }
 
-    /* activity */
-    .act-item { display:flex; align-items:flex-start; gap:.7rem; padding:.6rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
-    .act-item:last-child { border-bottom:none; }
-    .act-ic { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:.8rem; }
-    .act-txt { flex:1; font-size:.8rem; color:var(--text-secondary); line-height:1.4; }
-    .act-txt strong { color:var(--text-primary); }
-    .act-time { font-size:.68rem; color:var(--text-muted); margin-top:.1rem; }
+    /* ── Badges ─────────────────────────────────────── */
+    .badge-role-admin { background:rgba(255,60,60,.15);color:#ff6b6b;padding:.15rem .45rem;border-radius:4px;font-size:.7rem;font-weight:700; }
+    .badge-role-moderator { background:rgba(255,190,0,.15);color:var(--warning);padding:.15rem .45rem;border-radius:4px;font-size:.7rem;font-weight:700; }
+    .badge-role-user { background:rgba(0,195,255,.1);color:var(--blue-primary);padding:.15rem .45rem;border-radius:4px;font-size:.7rem;font-weight:700; }
+    .badge-banned { background:rgba(255,60,60,.1);color:var(--danger);padding:.15rem .45rem;border-radius:4px;font-size:.7rem;font-weight:600; }
+    .badge-order-pending   { background:rgba(255,190,0,.15); color:var(--warning); padding:.15rem .5rem; border-radius:4px; font-size:.7rem; font-weight:700; }
+    .badge-order-active    { background:rgba(0,195,255,.15); color:var(--blue-primary); padding:.15rem .5rem; border-radius:4px; font-size:.7rem; font-weight:700; }
+    .badge-order-completed { background:rgba(0,255,163,.12); color:var(--success); padding:.15rem .5rem; border-radius:4px; font-size:.7rem; font-weight:700; }
+    .badge-order-cancelled { background:rgba(255,60,60,.1); color:var(--danger); padding:.15rem .5rem; border-radius:4px; font-size:.7rem; font-weight:700; }
+    .badge-order-failed    { background:rgba(255,60,60,.1); color:var(--danger); padding:.15rem .5rem; border-radius:4px; font-size:.7rem; font-weight:700; }
 
-    /* verify banner */
-    .verify-banner {
-      display:flex; align-items:center; justify-content:space-between; gap:1rem;
-      padding:.9rem 1.25rem; margin-bottom:1.5rem;
+    /* ── Action buttons ──────────────────────────────── */
+    .act-btn {
+      padding: .25rem .6rem; border-radius: 5px; font-size: .75rem; font-weight: 600;
+      cursor: pointer; border: none; transition: opacity .15s;
     }
-    .verify-banner p { font-size:.86rem; color:var(--text-secondary); }
+    .act-btn:hover { opacity: .8; }
+    .act-ban   { background:rgba(255,60,60,.15);color:var(--danger); }
+    .act-unban { background:rgba(0,255,163,.12);color:var(--success); }
+    .act-edit  { background:rgba(0,195,255,.12);color:var(--blue-primary); }
+    .act-cr    { background:rgba(155,48,255,.12);color:var(--purple-primary); }
+    .act-done  { background:rgba(0,255,163,.12);color:var(--success); }
+    .act-cancel{ background:rgba(255,60,60,.12);color:var(--danger); }
 
-    /* hamburger */
-    .hamburger { display:none; background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:.35rem; }
+    /* ── Modal ───────────────────────────────────────── */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); backdrop-filter:blur(4px); z-index:400; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:#0d1428; border:1px solid rgba(0,195,255,.2); border-radius:14px; width:100%; max-width:480px; padding:1.75rem; position:relative; max-height:90vh; overflow-y:auto; }
+    .modal-title { font-family:'Orbitron',sans-serif; font-size:.95rem; font-weight:700; margin:0 0 1.25rem; }
+    .modal-close { position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--text-muted); font-size:1.4rem; cursor:pointer; }
 
-    @media (max-width:1100px) { .content-grid { grid-template-columns:1fr; } .stats-grid { grid-template-columns:repeat(2,1fr); } }
-    @media (max-width:768px)  { .stats-grid { grid-template-columns:repeat(2,1fr); gap:.75rem; } .hamburger { display:flex; } }
+    /* ── Product form ────────────────────────────────── */
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+
+    /* ── Stars ───────────────────────────────────────── */
+    .stars { color:#ffc107; font-size:.9rem; letter-spacing:1px; }
+
+    /* ── Log rows ────────────────────────────────────── */
+    .log-row { font-size:.78rem; padding:.5rem .75rem; border-bottom:1px solid rgba(255,255,255,.04); }
+    .log-row:last-child { border-bottom:none; }
+    .log-action { background:rgba(0,195,255,.08); color:var(--blue-primary); padding:.1rem .35rem; border-radius:3px; font-family:monospace; font-size:.72rem; }
+
+    @media (max-width:768px) {
+      .overview-grid { grid-template-columns: 1fr 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
   </style>
 
-  <!-- Verification banner (Habbo-window style alert) -->
-  <div class="hb-window verify-banner" id="verify-banner" style="background:rgba(10,30,10,0.6);border-color:#000;">
-    <div class="hb-window-title" style="background:linear-gradient(90deg,#3a2a00,#1a1000);margin:-1px -1px 0;">
-      <h3>⚠ Verificación pendiente</h3>
-      <span class="hb-close" onclick="document.getElementById('verify-banner').remove()">✕</span>
+  <div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+    <div>
+      <h1 style="font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:700;margin:0;">Panel de Administración</h1>
+      <p style="color:var(--text-muted);font-size:.82rem;margin:.2rem 0 0;">HabboBots — Gestión completa</p>
     </div>
-    <div style="padding:.8rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
-      <p>Vincula tu cuenta de Habbo para desbloquear todas las funciones.</p>
-      <a href="/verificar" class="hb-btn" style="white-space:nowrap;background:linear-gradient(180deg,#6a4a00,#3a2500);">Verificar ahora</a>
+    <span id="admin-online" style="font-size:.8rem;color:var(--success);background:rgba(0,255,163,.08);border:1px solid rgba(0,255,163,.2);padding:.3rem .75rem;border-radius:50px;">
+      ● — online
+    </span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="admin-tabs">
+    <button class="admin-tab active" onclick="showTab('overview')">📊 Resumen</button>
+    <button class="admin-tab" onclick="showTab('users')">👥 Usuarios</button>
+    <button class="admin-tab" onclick="showTab('orders')">📦 Pedidos</button>
+    <button class="admin-tab" onclick="showTab('products')">🛒 Productos</button>
+    <button class="admin-tab" onclick="showTab('reviews')">⭐ Reseñas</button>
+    <button class="admin-tab" onclick="showTab('coupons')">🎟 Cupones</button>
+    <button class="admin-tab" onclick="showTab('tickets')">🎫 Soporte</button>
+    <button class="admin-tab" onclick="showTab('logs')">📋 Logs</button>
+    <a href="/botcontrol" class="admin-tab" style="text-decoration:none;display:flex;align-items:center;">🎮 Bot Control</a>
+  </div>
+
+  <!-- ── TAB: RESUMEN ───────────────────────────────── -->
+  <div id="tab-overview" class="tab-panel active">
+    <div class="overview-grid">
+      <div class="ov-card"><div class="ov-val neon-blue" id="ov-users">—</div><div class="ov-lbl">Usuarios</div></div>
+      <div class="ov-card"><div class="ov-val" style="color:var(--success);" id="ov-online">—</div><div class="ov-lbl">Online ahora</div></div>
+      <div class="ov-card"><div class="ov-val" style="color:var(--warning);" id="ov-new">—</div><div class="ov-lbl">Nuevos hoy</div></div>
+      <div class="ov-card"><div class="ov-val neon-purple" id="ov-revenue">—</div><div class="ov-lbl">Créditos vendidos</div></div>
+      <div class="ov-card"><div class="ov-val" id="ov-orders">—</div><div class="ov-lbl">Pedidos totales</div></div>
+      <div class="ov-card"><div class="ov-val" style="color:var(--warning);" id="ov-pending">—</div><div class="ov-lbl">Pendientes</div></div>
+      <div class="ov-card"><div class="ov-val" style="color:var(--blue-primary);" id="ov-active-ord">—</div><div class="ov-lbl">En proceso</div></div>
+      <div class="ov-card"><div class="ov-val" style="color:#ffc107;" id="ov-rating">—</div><div class="ov-lbl">Valoración media</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+      <!-- Últimas órdenes -->
+      <div class="card" style="padding:1.25rem;">
+        <div style="font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:700;margin-bottom:.85rem;">Últimos pedidos</div>
+        <div class="admin-table-wrap">
+          <table>
+            <thead><tr><th>Usuario</th><th>Servicio</th><th>Estado</th><th>Cr</th></tr></thead>
+            <tbody id="recent-orders-body">
+              <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1rem;">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Últimos usuarios -->
+      <div class="card" style="padding:1.25rem;">
+        <div style="font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:700;margin-bottom:.85rem;">Últimos usuarios</div>
+        <div class="admin-table-wrap">
+          <table>
+            <thead><tr><th>Nick</th><th>Email</th><th>Rol</th></tr></thead>
+            <tbody id="recent-users-body">
+              <tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:1rem;">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Page header -->
-  <div class="page-header">
-    <h1>¡Hola, <span class="gradient-text">Rafa</span>! 👋</h1>
-    <p>Resumen de tu actividad en HabboBots.</p>
+  <!-- ── TAB: USUARIOS ──────────────────────────────── -->
+  <div id="tab-users" class="tab-panel">
+    <div class="admin-toolbar">
+      <input id="users-search" type="text" placeholder="Buscar nick o email…" oninput="searchUsers()" />
+      <select id="users-role" onchange="searchUsers()">
+        <option value="">Todos los roles</option>
+        <option value="user">user</option>
+        <option value="moderator">moderator</option>
+        <option value="admin">admin</option>
+      </select>
+      <select id="users-banned" onchange="searchUsers()">
+        <option value="">Todos</option>
+        <option value="0">No baneados</option>
+        <option value="1">Baneados</option>
+      </select>
+    </div>
+    <div class="admin-table-wrap">
+      <table>
+        <thead><tr><th>Nick</th><th>Email</th><th>Rol</th><th>Créditos</th><th>Hoteles</th><th>Estado</th><th>Registro</th><th>Acciones</th></tr></thead>
+        <tbody id="users-body">
+          <tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="users-pagination" style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.75rem;font-size:.8rem;color:var(--text-muted);"></div>
   </div>
 
-  <!-- Stats -->
-  <div class="stats-grid">
-    <div class="card stat-card">
-      <div class="stat-icon icon-blue">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M12 11V5"/><circle cx="12" cy="4" r="1"/></svg>
-      </div>
-      <div class="stat-val neon-blue">3</div>
-      <div class="stat-lbl">Bots activos</div>
-      <div class="stat-ch up">▲ +1 este mes</div>
+  <!-- ── TAB: PEDIDOS ───────────────────────────────── -->
+  <div id="tab-orders" class="tab-panel">
+    <div class="admin-toolbar">
+      <input id="orders-search" type="text" placeholder="Usuario, nick Habbo o servicio…" oninput="searchOrders()" />
+      <select id="orders-status" onchange="searchOrders()">
+        <option value="">Todos los estados</option>
+        <option value="pending">Pendiente</option>
+        <option value="active">Activo</option>
+        <option value="completed">Completado</option>
+        <option value="cancelled">Cancelado</option>
+        <option value="failed">Fallido</option>
+      </select>
+      <select id="orders-hotel" onchange="searchOrders()">
+        <option value="">Todos los hoteles</option>
+        <option value="es">habbo.es</option>
+        <option value="com">habbo.com</option>
+        <option value="br">habbo.com.br</option>
+        <option value="tr">habbo.com.tr</option>
+        <option value="fi">habbo.fi</option>
+        <option value="de">habbo.de</option>
+      </select>
     </div>
-    <div class="card stat-card">
-      <div class="stat-icon icon-purple">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-      </div>
-      <div class="stat-val neon-purple">1,240</div>
-      <div class="stat-lbl">Créditos</div>
-      <div class="stat-ch up">▲ +500 comprados</div>
-    </div>
-    <div class="card stat-card">
-      <div class="stat-icon icon-green">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      </div>
-      <div class="stat-val" style="color:var(--success);">99.2%</div>
-      <div class="stat-lbl">Uptime bots</div>
-      <div class="stat-ch up">▲ Excelente</div>
-    </div>
-    <div class="card stat-card">
-      <div class="stat-icon icon-yellow">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      </div>
-      <div class="stat-val" style="color:var(--warning);">2</div>
-      <div class="stat-lbl">Hoteles</div>
-      <div class="stat-ch" style="color:var(--text-muted);">.es / .com</div>
+    <div class="admin-table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Usuario</th><th>Servicio</th><th>Habbo</th><th>Hotel</th><th>Cr</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <tbody id="orders-body">
+          <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Cargando…</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
-  <!-- Content grid -->
-  <div class="content-grid">
-    <!-- Bots list — Habbo window style -->
-    <div class="hb-window">
-      <div class="hb-window-title">
-        <h3>Mis Bots</h3>
-        <a href="/bots" class="hb-btn" style="font-size:.75rem;padding:.25rem .6rem;">Ver todos</a>
+  <!-- ── TAB: PRODUCTOS ────────────────────────────── -->
+  <div id="tab-products" class="tab-panel">
+    <div class="admin-toolbar">
+      <button class="btn btn-primary" style="padding:.45rem 1rem;font-size:.85rem;" onclick="openProductModal()">+ Nuevo producto</button>
+    </div>
+    <div class="admin-table-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Tipo</th><th>Precio</th><th>Hotel</th><th>Órdenes</th><th>Ingresos</th><th>Activo</th><th>Acciones</th></tr></thead>
+        <tbody id="products-body">
+          <tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── TAB: RESEÑAS ──────────────────────────────── -->
+  <div id="tab-reviews" class="tab-panel">
+    <div class="admin-table-wrap">
+      <table>
+        <thead><tr><th>Usuario</th><th>Producto</th><th>Valoración</th><th>Comentario</th><th>Fecha</th></tr></thead>
+        <tbody id="reviews-body">
+          <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── TAB: CUPONES ─────────────────────────────── -->
+  <div id="tab-coupons" class="tab-panel">
+    <div class="admin-toolbar">
+      <button class="btn btn-primary" style="padding:.45rem 1rem;font-size:.85rem;" onclick="openCouponModal()">+ Nuevo cupón</button>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table" id="coupons-table">
+        <thead><tr><th>Código</th><th>Descuento</th><th>Usos</th><th>Máx. usos</th><th>Expira</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="coupons-tbody"><tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── TAB: SOPORTE (TICKETS) ────────────────────── -->
+  <div id="tab-tickets" class="tab-panel">
+    <div class="admin-toolbar">
+      <select id="ticket-filter-status" class="form-input" style="width:auto;cursor:pointer;" onchange="loadAdminTickets()">
+        <option value="">Todos</option>
+        <option value="open">Abiertos</option>
+        <option value="closed">Cerrados</option>
+      </select>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>ID</th><th>Usuario</th><th>Asunto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+        <tbody id="tickets-admin-tbody"><tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Ticket detalle (admin) ─────────────── -->
+  <div class="modal-overlay" id="ticket-admin-modal">
+    <div class="modal-box" style="max-width:560px;">
+      <button class="modal-close" onclick="closeModal('ticket-admin-modal')">×</button>
+      <h3 class="modal-title" id="tam-subject">Ticket</h3>
+      <div id="tam-messages" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem;margin-bottom:1rem;"></div>
+      <div class="form-group" style="margin-bottom:.75rem;">
+        <textarea id="tam-reply" class="form-input" rows="3" placeholder="Escribe tu respuesta…" style="resize:vertical;"></textarea>
       </div>
-      <div class="hb-window-body">
-        <div class="bot-row">
-          <div class="bot-av-wrap">
-            <div class="bot-av">
-              <img src="https://sandbox.habbo.com/habbo-imaging/avatarimage?figure=hd-180-1369.ch-210-1408.lg-4315&direction=3&head_direction=3&gesture=nrm&headonly=1&size=s" style="height:36px;" alt="bot" onerror="this.src='https://ui-avatars.com/api/?name=B1&background=0080ff&color=fff&size=36'" />
+      <div style="display:flex;gap:.5rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="adminReplyTicket()">Responder</button>
+        <button class="btn" id="tam-close-btn" style="background:rgba(255,60,60,.1);border:1px solid var(--danger);color:var(--danger);padding:.45rem 1rem;" onclick="adminCloseTicket()">Cerrar ticket</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Cupón ───────────────────────────────── -->
+  <div class="modal-overlay" id="coupon-modal">
+    <div class="modal-box" style="max-width:400px;">
+      <button class="modal-close" onclick="closeModal('coupon-modal')">×</button>
+      <h3 class="modal-title" id="cm-title">Nuevo cupón</h3>
+      <input type="hidden" id="cm-id" />
+      <div class="form-group" style="margin-bottom:.75rem;">
+        <label class="form-label">Código</label>
+        <input type="text" id="cm-code" class="form-input" placeholder="VERANO25" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
+      </div>
+      <div class="form-row" style="margin-bottom:.75rem;">
+        <div class="form-group">
+          <label class="form-label">Descuento (%)</label>
+          <input type="number" id="cm-discount" class="form-input" placeholder="10" min="1" max="100" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Máx. usos (vacío = ∞)</label>
+          <input type="number" id="cm-max-uses" class="form-input" placeholder="100" min="1" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:1.25rem;">
+        <label class="form-label">Fecha de expiración (opcional)</label>
+        <input type="datetime-local" id="cm-expires" class="form-input" />
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="saveCoupon()">Guardar cupón</button>
+    </div>
+  </div>
+
+  <!-- ── TAB: LOGS ─────────────────────────────────── -->
+  <div id="tab-logs" class="tab-panel">
+    <div class="admin-toolbar">
+      <input id="logs-search" type="text" placeholder="Filtrar por acción…" oninput="searchLogs()" />
+    </div>
+    <div id="logs-list" style="background:var(--bg-card);border:1px solid var(--border-glow);border-radius:10px;overflow:hidden;">
+      <div style="text-align:center;padding:1.5rem;color:var(--text-muted);">Cargando…</div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Editar usuario ─────────────────────── -->
+  <div class="modal-overlay" id="user-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('user-modal')">×</button>
+      <h3 class="modal-title" id="user-modal-title">Gestionar usuario</h3>
+      <input type="hidden" id="um-id" />
+      <div class="form-group" style="margin-bottom:.85rem;">
+        <label class="form-label">Rol</label>
+        <select id="um-role" class="form-input" style="cursor:pointer;">
+          <option value="user">user</option>
+          <option value="moderator">moderator</option>
+          <option value="admin">admin</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:.85rem;">
+        <label class="form-label">Ajustar créditos (positivo = añadir, negativo = quitar)</label>
+        <input type="number" id="um-credits" class="form-input" placeholder="Ej: 500 ó -100" value="0" />
+      </div>
+      <div class="form-group" style="margin-bottom:1.25rem;">
+        <label class="form-label">Nota del ajuste</label>
+        <input type="text" id="um-credits-note" class="form-input" placeholder="Motivo del ajuste" />
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="saveUser()">Guardar cambios</button>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Banear usuario ─────────────────────── -->
+  <div class="modal-overlay" id="ban-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('ban-modal')">×</button>
+      <h3 class="modal-title">Banear usuario</h3>
+      <input type="hidden" id="ban-id" />
+      <div class="form-group" style="margin-bottom:.85rem;">
+        <label class="form-label">Motivo del baneo</label>
+        <input type="text" id="ban-reason" class="form-input" placeholder="Ej: Spam, multicuenta, trampa…" />
+      </div>
+      <div class="form-group" style="margin-bottom:1.25rem;">
+        <label class="form-label">Expiración (dejar vacío = permanente)</label>
+        <input type="datetime-local" id="ban-expires" class="form-input" />
+      </div>
+      <button class="btn" style="width:100%;background:rgba(255,60,60,.15);border:1px solid var(--danger);color:var(--danger);" onclick="confirmBan()">Banear usuario</button>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Producto ───────────────────────────── -->
+  <div class="modal-overlay" id="product-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('product-modal')">×</button>
+      <h3 class="modal-title" id="pm-title">Nuevo producto</h3>
+      <input type="hidden" id="pm-id" />
+      <div class="form-row" style="margin-bottom:.75rem;">
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input type="text" id="pm-name" class="form-input" placeholder="Nombre del servicio" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select id="pm-type" class="form-input" style="cursor:pointer;">
+            <option value="badge_respect">Respetos</option>
+            <option value="badge_pet">Caricias mascota</option>
+            <option value="room_fill">Llenar sala</option>
+            <option value="raid">Raid</option>
+            <option value="trade">Trade</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:.75rem;">
+        <label class="form-label">Descripción</label>
+        <input type="text" id="pm-description" class="form-input" placeholder="Descripción breve" />
+      </div>
+      <div class="form-row" style="margin-bottom:.75rem;">
+        <div class="form-group">
+          <label class="form-label">Precio (créditos)</label>
+          <input type="number" id="pm-price" class="form-input" placeholder="50" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hotel (vacío = todos)</label>
+          <select id="pm-hotel" class="form-input" style="cursor:pointer;">
+            <option value="">Todos</option>
+            <option value="es">habbo.es</option>
+            <option value="com">habbo.com</option>
+            <option value="br">habbo.com.br</option>
+            <option value="tr">habbo.com.tr</option>
+            <option value="fi">habbo.fi</option>
+            <option value="de">habbo.de</option>
+            <option value="fr">habbo.fr</option>
+            <option value="it">habbo.it</option>
+            <option value="nl">habbo.nl</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:.75rem;">
+        <div class="form-group">
+          <label class="form-label">Duración (segundos, vacío = instantáneo)</label>
+          <input type="number" id="pm-duration" class="form-input" placeholder="3600" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Límite por usuario (vacío = ilimitado)</label>
+          <input type="number" id="pm-max" class="form-input" placeholder="—" min="0" />
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:.75rem;">
+        <div class="form-group">
+          <label class="form-label">Orden</label>
+          <input type="number" id="pm-sort" class="form-input" value="99" min="0" />
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:.5rem;padding-top:1.5rem;">
+          <input type="checkbox" id="pm-active" checked style="width:16px;height:16px;cursor:pointer;" />
+          <label for="pm-active" class="form-label" style="margin:0;cursor:pointer;">Activo</label>
+        </div>
+      </div>
+      <!-- Imagen del producto -->
+      <div class="form-group" style="margin-bottom:1.25rem;">
+        <label class="form-label">Imagen del producto</label>
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+          <img id="pm-image-preview" src="" alt="Vista previa"
+               style="display:none;width:80px;height:56px;object-fit:cover;border-radius:8px;border:1px solid rgba(0,195,255,.2);" />
+          <div style="flex:1;min-width:0;">
+            <input type="file" id="pm-image-file" accept="image/*" style="display:none;" onchange="previewProductImage(this)" />
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+              <button type="button" class="btn" style="font-size:.78rem;padding:.3rem .7rem;background:rgba(0,195,255,.08);border:1px solid rgba(0,195,255,.2);border-radius:6px;cursor:pointer;"
+                      onclick="document.getElementById('pm-image-file').click()">
+                📁 Elegir archivo
+              </button>
+              <button type="button" id="pm-upload-btn" class="btn" style="display:none;font-size:.78rem;padding:.3rem .7rem;background:rgba(155,48,255,.1);border:1px solid rgba(155,48,255,.25);border-radius:6px;cursor:pointer;"
+                      onclick="uploadProductImage()">
+                ⬆ Subir imagen
+              </button>
+              <button type="button" id="pm-remove-img-btn" class="btn" style="display:none;font-size:.78rem;padding:.3rem .7rem;background:rgba(255,60,60,.08);border:1px solid rgba(255,60,60,.2);border-radius:6px;cursor:pointer;color:var(--danger);"
+                      onclick="removeProductImage()">
+                🗑 Quitar
+              </button>
             </div>
-            <span class="bot-dot dot-on"></span>
-          </div>
-          <div class="bot-info">
-            <div class="bot-name">HabboBot_Alpha</div>
-            <div class="bot-meta">habbo.es · <span style="color:var(--success)">En línea</span> · Sala: La Terraza</div>
-          </div>
-          <div class="bot-acts">
-            <span class="badge badge-success">Activo</span>
-            <a href="/bots" class="hb-btn hb-btn-ghost" style="font-size:.75rem;padding:.25rem .6rem;">Gestionar</a>
+            <p id="pm-image-name" style="font-size:.73rem;color:var(--text-muted);margin:.35rem 0 0;"></p>
           </div>
         </div>
-
-        <div class="bot-row">
-          <div class="bot-av-wrap">
-            <div class="bot-av">
-              <img src="https://sandbox.habbo.com/habbo-imaging/avatarimage?figure=hd-180-1.ch-210-1408.lg-280&direction=3&head_direction=3&gesture=nrm&headonly=1&size=s" style="height:36px;" alt="bot" onerror="this.src='https://ui-avatars.com/api/?name=B2&background=9b30ff&color=fff&size=36'" />
-            </div>
-            <span class="bot-dot dot-on"></span>
-          </div>
-          <div class="bot-info">
-            <div class="bot-name">TradeBot_ES</div>
-            <div class="bot-meta">habbo.es · <span style="color:var(--success)">En línea</span> · Sala: Mercado</div>
-          </div>
-          <div class="bot-acts">
-            <span class="badge badge-success">Activo</span>
-            <a href="/bots" class="hb-btn hb-btn-ghost" style="font-size:.75rem;padding:.25rem .6rem;">Gestionar</a>
-          </div>
-        </div>
-
-        <div class="bot-row">
-          <div class="bot-av-wrap">
-            <div class="bot-av" style="font-size:1.3rem;">🤖</div>
-            <span class="bot-dot dot-busy"></span>
-          </div>
-          <div class="bot-info">
-            <div class="bot-name">FarmBot_COM</div>
-            <div class="bot-meta">habbo.com · <span style="color:var(--warning)">Ocupado</span> · Farmeo activo</div>
-          </div>
-          <div class="bot-acts">
-            <span class="badge badge-warning">Ocupado</span>
-            <a href="/bots" class="hb-btn hb-btn-ghost" style="font-size:.75rem;padding:.25rem .6rem;">Gestionar</a>
-          </div>
-        </div>
-
-        <div style="margin-top:1rem;">
-          <a href="/bots" class="hb-btn hb-btn-purple w-full" style="width:100%;justify-content:center;display:flex;gap:.5rem;align-items:center;">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Contratar nuevo bot
-          </a>
-        </div>
+        <input type="hidden" id="pm-image-url" />
       </div>
-    </div>
-
-    <!-- Right column -->
-    <div style="display:flex;flex-direction:column;gap:1.25rem;">
-
-      <!-- Credits — Habbo window -->
-      <div class="hb-window">
-        <div class="hb-window-title" style="background:linear-gradient(90deg,#1a0650,#0a2a6e);">
-          <h3>💎 Mis créditos</h3>
-          <span class="hb-minimize">–</span>
-        </div>
-        <div class="hb-window-body" style="background:linear-gradient(135deg,rgba(0,120,255,.1),rgba(130,0,255,.15));position:relative;overflow:hidden;">
-          <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(155,48,255,.2) 0%,transparent 70%);"></div>
-          <div style="position:relative;z-index:1;">
-            <div class="credit-lbl">Saldo disponible</div>
-            <div class="credit-amt gradient-text">1,240</div>
-            <div class="credit-sub">créditos HabboBots</div>
-            <div style="margin-top:1rem;">
-              <div class="progress-bar"><div class="progress-fill" style="width:62%;"></div></div>
-              <div style="display:flex;justify-content:space-between;margin-top:.35rem;font-size:.7rem;color:var(--text-muted);">
-                <span>1,240 / 2,000</span><span>Plan Básico</span>
-              </div>
-            </div>
-            <a href="/tienda" class="hb-btn hb-btn-purple" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:1rem;">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Recargar créditos
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick actions — Habbo window -->
-      <div class="hb-window">
-        <div class="hb-window-title"><h3>Acciones rápidas</h3></div>
-        <div class="hb-window-body">
-          <div class="quick-grid">
-            <a href="/bots" class="quick-btn">
-              <div class="quick-ic icon-blue"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M12 11V5"/><circle cx="12" cy="4" r="1"/></svg></div>
-              Nuevo bot
-            </a>
-            <a href="/tienda" class="quick-btn">
-              <div class="quick-ic icon-purple"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
-              Comprar
-            </a>
-            <a href="/verificar" class="quick-btn">
-              <div class="quick-ic icon-yellow"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-              Verificar
-            </a>
-            <a href="/perfil" class="quick-btn">
-              <div class="quick-ic icon-green"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-              Perfil
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Activity — Habbo window -->
-      <div class="hb-window">
-        <div class="hb-window-title"><h3>Actividad reciente</h3></div>
-        <div class="hb-window-body">
-          <div class="act-item">
-            <div class="act-ic icon-green">✓</div>
-            <div class="act-txt"><strong>HabboBot_Alpha</strong> se conectó<div class="act-time">hace 12 min</div></div>
-          </div>
-          <div class="act-item">
-            <div class="act-ic icon-purple">💳</div>
-            <div class="act-txt">Compraste <strong>500 créditos</strong><div class="act-time">hace 2 horas</div></div>
-          </div>
-          <div class="act-item">
-            <div class="act-ic icon-blue">🤖</div>
-            <div class="act-txt"><strong>FarmBot_COM</strong> inició sesión<div class="act-time">hace 4 horas</div></div>
-          </div>
-          <div class="act-item">
-            <div class="act-ic icon-yellow">⚠</div>
-            <div class="act-txt"><strong>TradeBot_ES</strong> desconectado por el hotel<div class="act-time">ayer 22:14</div></div>
-          </div>
-        </div>
-      </div>
-
+      <button class="btn btn-primary" style="width:100%;" onclick="saveProduct()">Guardar producto</button>
     </div>
   </div>
 
-  <script is:inline slot="scripts">
-    // Carga datos reales del backend
+  <script is:inline>
+    // ── Habbo avatar helper ────────────────────────
+    function habboAvatar(username, hotels) {
+      // hotels puede ser "es,com" o simplemente "es"
+      const hotel = hotels ? hotels.split(',')[0].trim() : 'es';
+      const name  = encodeURIComponent(username || '?');
+      return `https://www.habbo.${hotel}/habbo-imaging/avatarimage?user=${name}&direction=2&head_direction=3&gesture=sml&headonly=1&size=s`;
+    }
+    function habboAvatarFallback(username) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(username||'?')}&background=0d1428&color=00c3ff&size=32&bold=true&rounded=true`;
+    }
+
+    // ── Guard: solo admins ─────────────────────────
     (async () => {
       try {
-        // Stats globales
-        const stats = await StatsAPI.overview();
-        document.querySelector('.stat-val.neon-blue').textContent    = stats.bots.online;
-        document.querySelector('.stat-val.neon-purple').textContent  = stats.credits.balance.toLocaleString();
-
-        // Nombre de usuario en el saludo
-        const { user } = await UsersAPI.me();
-        const greet = document.querySelector('.page-header h1');
-        if (greet) greet.innerHTML = `¡Hola, <span class="gradient-text">${user.username}</span>! 👋`;
-
-        // Créditos en la tarjeta
-        const creditAmt = document.querySelector('.credit-amt');
-        if (creditAmt) creditAmt.textContent = stats.credits.balance.toLocaleString();
-
-      } catch (err) {
-        // Si el token expiró, logout
-        if (err.status === 401) AuthAPI.logout();
-      }
-
-      // Carga lista de bots
-      try {
-        const { bots } = await BotsAPI.list();
-        const botsCount = document.querySelector('.stat-val.neon-blue');
-        if (botsCount) botsCount.textContent = bots.filter(b => b.status === 'online').length;
-      } catch {}
+        const { user } = await AuthAPI.me();
+        if (user.role !== 'admin' && user.role !== 'moderator') window.location.href = '/home';
+      } catch { window.location.href = '/'; }
     })();
+
+    // ── Estado ─────────────────────────────────────
+    let _activeTab   = 'overview';
+    let _usersPage   = 1;
+    let _ordersPage  = 1;
+    let _searchTimer = null;
+
+    // ── Tabs ────────────────────────────────────────
+    function showTab(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(`tab-${name}`).classList.add('active');
+      event.currentTarget.classList.add('active');
+      _activeTab = name;
+
+      if (name === 'overview')  loadOverview();
+      if (name === 'users')     loadUsers();
+      if (name === 'orders')    loadOrders();
+      if (name === 'products')  loadProducts();
+      if (name === 'reviews')   loadReviews();
+      if (name === 'coupons')   loadCoupons();
+      if (name === 'tickets')   loadAdminTickets();
+      if (name === 'logs')      loadLogs();
+    }
+
+    // ── OVERVIEW ────────────────────────────────────
+    async function loadOverview() {
+      try {
+        const d = await AdminAPI.overview();
+        set('ov-users',      d.users.total);
+        set('ov-online',     d.users.online);
+        set('ov-new',        d.users.newToday);
+        set('ov-revenue',    (d.revenue||0).toLocaleString() + ' cr');
+        set('ov-orders',     d.orders.total);
+        set('ov-pending',    d.orders.pending);
+        set('ov-active-ord', d.orders.active);
+        set('ov-rating',     d.avgRating ? `${d.avgRating} ⭐` : '—');
+        set('admin-online',  `● ${d.users.online} online`);
+
+        // Últimas órdenes
+        const ob = document.getElementById('recent-orders-body');
+        ob.innerHTML = d.recentOrders.map(o => `
+          <tr>
+            <td>${o.username}</td>
+            <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.product_name}</td>
+            <td>${orderBadge(o.status)}</td>
+            <td style="color:var(--purple-primary);">${o.credits_paid}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Sin pedidos</td></tr>';
+
+        // Últimos usuarios
+        const ub = document.getElementById('recent-users-body');
+        ub.innerHTML = d.recentUsers.map(u => `
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:.5rem;">
+                <img src="${habboAvatar(u.username, u.hotels)}"
+                     style="width:28px;height:28px;border-radius:50%;image-rendering:pixelated;flex-shrink:0;background:#0d1428;"
+                     onerror="this.src='${habboAvatarFallback(u.username)}'"
+                     alt="">
+                <span style="font-weight:600;">${u.username}</span>
+              </div>
+            </td>
+            <td style="color:var(--text-muted);font-size:.78rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;">${u.email}</td>
+            <td>${roleBadge(u.role)}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Sin usuarios</td></tr>';
+      } catch (e) { console.error(e); }
+    }
+
+    // ── USERS ────────────────────────────────────────
+    let _usersData = [];
+    async function loadUsers() {
+      const search = document.getElementById('users-search').value;
+      const role   = document.getElementById('users-role').value;
+      const banned = document.getElementById('users-banned').value;
+      const body   = document.getElementById('users-body');
+      body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:1rem;">Cargando…</td></tr>`;
+      try {
+        const params = { page: _usersPage, limit: 25 };
+        if (search) params.search = search;
+        if (role)   params.role   = role;
+        if (banned) params.banned = banned;
+        const { users } = await AdminAPI.users(params);
+        _usersData = users;
+        renderUsers(users);
+      } catch (e) { body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);">Error: ${e.message}</td></tr>`; }
+    }
+
+    function renderUsers(users) {
+      const body = document.getElementById('users-body');
+      if (!users.length) { body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:1rem;">Sin resultados</td></tr>'; return; }
+      body.innerHTML = users.map(u => `
+        <tr>
+          <td style="white-space:nowrap;">
+            <div style="display:flex;align-items:center;gap:.45rem;">
+              <img src="${habboAvatar(u.username, u.hotels)}"
+                   style="width:26px;height:26px;border-radius:50%;image-rendering:pixelated;flex-shrink:0;background:#0d1428;"
+                   onerror="this.src='${habboAvatarFallback(u.username)}'"
+                   alt="">
+              <span style="font-weight:600;">${u.username}</span>
+            </div>
+          </td>
+          <td style="color:var(--text-muted);font-size:.78rem;">${u.email}</td>
+          <td>${roleBadge(u.role)}</td>
+          <td style="color:var(--purple-primary);font-weight:600;">${(u.credits||0).toLocaleString()}</td>
+          <td style="color:var(--text-muted);font-size:.78rem;">${u.hotels||'—'}</td>
+          <td>${u.is_banned ? '<span class="badge-banned">Baneado</span>' : '<span style="color:var(--success);font-size:.75rem;">✓ Activo</span>'}</td>
+          <td style="color:var(--text-muted);font-size:.75rem;white-space:nowrap;">${fmtDate(u.created_at)}</td>
+          <td style="white-space:nowrap;display:flex;gap:.3rem;flex-wrap:wrap;">
+            <button class="act-btn act-edit" onclick="openUserModal('${u.id}')">✏️ Editar</button>
+            <button class="act-btn act-cr" onclick="openUserModal('${u.id}',true)">💳 Cred</button>
+            ${u.is_banned
+              ? `<button class="act-btn act-unban" onclick="unbanUser('${u.id}')">✓ Desbanear</button>`
+              : `<button class="act-btn act-ban" onclick="openBanModal('${u.id}', '${u.username}')">🚫 Banear</button>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function searchUsers() {
+      clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(() => { _usersPage = 1; loadUsers(); }, 350);
+    }
+
+    // ── ORDERS ───────────────────────────────────────
+    async function loadOrders() {
+      const search = document.getElementById('orders-search').value;
+      const status = document.getElementById('orders-status').value;
+      const hotel  = document.getElementById('orders-hotel').value;
+      const body   = document.getElementById('orders-body');
+      body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:1rem;">Cargando…</td></tr>`;
+      try {
+        const params = { page: _ordersPage, limit: 30 };
+        if (search) params.search = search;
+        if (status) params.status = status;
+        if (hotel)  params.hotel  = hotel;
+        const { orders } = await AdminAPI.orders(params);
+        renderOrders(orders);
+      } catch (e) { body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--danger);">Error: ${e.message}</td></tr>`; }
+    }
+
+    function renderOrders(orders) {
+      const body = document.getElementById('orders-body');
+      if (!orders.length) { body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:1rem;">Sin resultados</td></tr>'; return; }
+      body.innerHTML = orders.map(o => `
+        <tr>
+          <td style="font-family:monospace;font-size:.72rem;color:var(--text-muted);">${o.id.slice(0,8)}…</td>
+          <td style="font-weight:600;">${o.username}</td>
+          <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.product_name}</td>
+          <td>${o.habbo_name}</td>
+          <td style="color:var(--text-muted);">habbo.${o.hotel}</td>
+          <td style="color:var(--purple-primary);font-weight:600;">${o.credits_paid}</td>
+          <td>${orderBadge(o.status)}</td>
+          <td style="color:var(--text-muted);font-size:.75rem;white-space:nowrap;">${fmtDate(o.created_at)}</td>
+          <td style="white-space:nowrap;display:flex;gap:.3rem;">
+            ${o.status === 'pending' || o.status === 'active'
+              ? `<button class="act-btn act-done" onclick="changeOrderStatus('${o.id}','completed')">✓</button>
+                 <button class="act-btn act-cancel" onclick="changeOrderStatus('${o.id}','cancelled')">✕</button>`
+              : `<span style="font-size:.72rem;color:var(--text-muted);">${o.status}</span>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function searchOrders() {
+      clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(() => { _ordersPage = 1; loadOrders(); }, 350);
+    }
+
+    async function changeOrderStatus(id, status) {
+      if (!confirm(`¿Cambiar estado del pedido a "${status}"?`)) return;
+      try {
+        await AdminAPI.updateOrder(id, status);
+        showToast(`Pedido marcado como ${status}`, 'success');
+        loadOrders();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    // ── PRODUCTS ─────────────────────────────────────
+    let _productsCache = [];
+
+    async function loadProducts() {
+      const body = document.getElementById('products-body');
+      body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:1rem;">Cargando…</td></tr>`;
+      try {
+        const { products } = await AdminAPI.products();
+        _productsCache = products;
+        renderProducts(products);
+      } catch (e) { body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);">Error: ${e.message}</td></tr>`; }
+    }
+
+    function renderProducts(products) {
+      const body = document.getElementById('products-body');
+      if (!products.length) { body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:1rem;">Sin productos</td></tr>'; return; }
+      const typeLabel = { badge_respect:'Respetos', badge_pet:'Caricias', room_fill:'Sala', raid:'Raid', trade:'Trade', custom:'Custom' };
+      body.innerHTML = products.map(p => `
+        <tr>
+          <td style="font-weight:600;">${p.name}</td>
+          <td style="color:var(--text-muted);font-size:.78rem;">${typeLabel[p.type]||p.type}</td>
+          <td style="color:var(--purple-primary);font-weight:600;">${p.price} cr</td>
+          <td style="color:var(--text-muted);font-size:.78rem;">${p.hotel||'Todos'}</td>
+          <td style="color:var(--text-muted);">${p.total_orders||0}</td>
+          <td style="color:var(--success);">${(p.total_revenue||0).toLocaleString()} cr</td>
+          <td>${p.active ? '<span style="color:var(--success);">✓</span>' : '<span style="color:var(--danger);">✕</span>'}</td>
+          <td style="white-space:nowrap;display:flex;gap:.3rem;">
+            <button class="act-btn act-edit" onclick="openProductModal('${p.id}')">✏️</button>
+            <button class="act-btn ${p.active?'act-cancel':'act-done'}" onclick="toggleProduct('${p.id}',${p.active?0:1})">${p.active?'Desactivar':'Activar'}</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function toggleProduct(id, active) {
+      try {
+        await AdminAPI.updateProduct(id, { active });
+        loadProducts();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    // ── REVIEWS ──────────────────────────────────────
+    async function loadReviews() {
+      const body = document.getElementById('reviews-body');
+      try {
+        const { reviews } = await AdminAPI.reviews();
+        body.innerHTML = reviews.map(r => `
+          <tr>
+            <td style="font-weight:600;">${r.username}</td>
+            <td>${r.product_name}</td>
+            <td class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)} <span style="color:var(--text-muted);font-size:.75rem;">(${r.rating}/5)</span></td>
+            <td style="color:var(--text-muted);font-size:.8rem;max-width:200px;">${r.comment||'—'}</td>
+            <td style="color:var(--text-muted);font-size:.75rem;">${fmtDate(r.created_at)}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">Sin reseñas</td></tr>';
+      } catch (e) { console.error(e); }
+    }
+
+    // ── LOGS ─────────────────────────────────────────
+    async function loadLogs() {
+      const action = document.getElementById('logs-search').value;
+      const el = document.getElementById('logs-list');
+      try {
+        const { logs } = await AdminAPI.logs(action ? { action } : {});
+        el.innerHTML = logs.map(l => `
+          <div class="log-row">
+            <span style="color:var(--text-muted);font-size:.72rem;margin-right:.5rem;">${fmtDate(l.created_at)}</span>
+            <span style="font-weight:600;margin-right:.5rem;">${l.actor_username||'—'}</span>
+            <span class="log-action">${l.action}</span>
+            ${l.target_id ? `<span style="color:var(--text-muted);font-size:.72rem;margin-left:.5rem;">→ ${l.target_id.slice(0,8)}</span>` : ''}
+            ${l.details ? `<span style="color:var(--text-muted);font-size:.72rem;margin-left:.5rem;">${l.details.slice(0,80)}</span>` : ''}
+          </div>
+        `).join('') || '<div style="text-align:center;padding:1.5rem;color:var(--text-muted);">Sin logs</div>';
+      } catch (e) { console.error(e); }
+    }
+
+    function searchLogs() {
+      clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(loadLogs, 350);
+    }
+
+    // ── USER MODAL ───────────────────────────────────
+    function openUserModal(userId, focusCredits = false) {
+      const u = _usersData.find(x => x.id === userId);
+      document.getElementById('um-id').value           = userId;
+      document.getElementById('um-role').value         = u?.role || 'user';
+      document.getElementById('um-credits').value      = 0;
+      document.getElementById('um-credits-note').value = '';
+      document.getElementById('user-modal-title').textContent = `Editar: ${u?.username || userId}`;
+      openModal('user-modal');
+      if (focusCredits) setTimeout(() => document.getElementById('um-credits').focus(), 100);
+    }
+
+    async function saveUser() {
+      const id    = document.getElementById('um-id').value;
+      const role  = document.getElementById('um-role').value;
+      const cr    = parseInt(document.getElementById('um-credits').value) || 0;
+      const note  = document.getElementById('um-credits-note').value;
+      try {
+        await AdminAPI.updateUser(id, { role, credits_adjust: cr || undefined, credits_note: note || undefined });
+        showToast('Usuario actualizado', 'success');
+        closeModal('user-modal');
+        loadUsers();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    // ── BAN MODAL ────────────────────────────────────
+    function openBanModal(id, username) {
+      document.getElementById('ban-id').value         = id;
+      document.getElementById('ban-reason').value     = '';
+      document.getElementById('ban-expires').value    = '';
+      openModal('ban-modal');
+    }
+
+    async function confirmBan() {
+      const id      = document.getElementById('ban-id').value;
+      const reason  = document.getElementById('ban-reason').value.trim();
+      const expires = document.getElementById('ban-expires').value;
+      if (!reason) { showToast('Escribe un motivo', 'warning'); return; }
+      try {
+        await AdminAPI.updateUser(id, { ban: true, ban_reason: reason, ban_expires: expires || undefined });
+        showToast('Usuario baneado', 'success');
+        closeModal('ban-modal');
+        loadUsers();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    async function unbanUser(id) {
+      if (!confirm('¿Desbanear este usuario?')) return;
+      try {
+        await AdminAPI.updateUser(id, { ban: false });
+        showToast('Usuario desbaneado', 'success');
+        loadUsers();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    // ── PRODUCT MODAL ─────────────────────────────────
+    let _editProductId = null;
+
+    function openProductModal(id) {
+      _editProductId = id || null;
+      const p = id ? _productsCache.find(x => x.id === id) : null;
+      document.getElementById('pm-title').textContent    = p ? 'Editar producto' : 'Nuevo producto';
+      document.getElementById('pm-id').value             = id || '';
+      document.getElementById('pm-name').value           = p ? p.name          : '';
+      document.getElementById('pm-type').value           = p ? p.type          : 'custom';
+      document.getElementById('pm-description').value    = p ? (p.description || '') : '';
+      document.getElementById('pm-price').value          = p ? p.price         : '';
+      document.getElementById('pm-hotel').value          = p ? (p.hotel || '') : '';
+      document.getElementById('pm-duration').value       = p ? (p.duration || '') : '';
+      document.getElementById('pm-max').value            = p ? (p.max_quantity || '') : '';
+      document.getElementById('pm-sort').value           = p ? (p.sort_order ?? 99) : '99';
+      document.getElementById('pm-active').checked       = p ? !!p.active      : true;
+      // Imagen
+      const imgUrl = p?.image_url || '';
+      document.getElementById('pm-image-url').value = imgUrl;
+      document.getElementById('pm-image-file').value = '';
+      _setImagePreview(imgUrl);
+      openModal('product-modal');
+    }
+
+    function _setImagePreview(url) {
+      const preview  = document.getElementById('pm-image-preview');
+      const nameEl   = document.getElementById('pm-image-name');
+      const removeBtn= document.getElementById('pm-remove-img-btn');
+      const uploadBtn= document.getElementById('pm-upload-btn');
+      if (url) {
+        preview.src = url.startsWith('/') ? `/api${url}` : url;
+        preview.style.display = 'block';
+        nameEl.textContent    = url.split('/').pop();
+        removeBtn.style.display = 'inline-block';
+      } else {
+        preview.style.display = 'none';
+        nameEl.textContent    = '';
+        removeBtn.style.display = 'none';
+      }
+      uploadBtn.style.display = 'none';
+    }
+
+    function previewProductImage(input) {
+      if (!input.files?.length) return;
+      const file = input.files[0];
+      const preview = document.getElementById('pm-image-preview');
+      const nameEl  = document.getElementById('pm-image-name');
+      preview.src   = URL.createObjectURL(file);
+      preview.style.display = 'block';
+      nameEl.textContent    = file.name;
+      document.getElementById('pm-upload-btn').style.display   = 'inline-block';
+      document.getElementById('pm-remove-img-btn').style.display = 'inline-block';
+    }
+
+    async function uploadProductImage() {
+      if (!_editProductId) {
+        // Primero guardar el producto, luego subir
+        showToast('Guarda el producto primero, luego sube la imagen editando el producto', 'warning');
+        return;
+      }
+      const file = document.getElementById('pm-image-file').files?.[0];
+      if (!file) { showToast('Elige un archivo primero', 'warning'); return; }
+      const btn = document.getElementById('pm-upload-btn');
+      btn.disabled = true; btn.textContent = 'Subiendo…';
+      try {
+        const { imageUrl, error } = await AdminAPI.uploadProductImage(_editProductId, file);
+        if (error) throw new Error(error);
+        document.getElementById('pm-image-url').value = imageUrl;
+        showToast('Imagen subida', 'success');
+        btn.style.display = 'none';
+        document.getElementById('pm-image-name').textContent = imageUrl.split('/').pop();
+        // Actualizar la cache
+        const cached = _productsCache.find(x => x.id === _editProductId);
+        if (cached) cached.image_url = imageUrl;
+      } catch (e) {
+        showToast('Error al subir imagen: ' + e.message, 'danger');
+      }
+      btn.disabled = false; btn.textContent = '⬆ Subir imagen';
+    }
+
+    function removeProductImage() {
+      document.getElementById('pm-image-url').value   = '';
+      document.getElementById('pm-image-file').value  = '';
+      _setImagePreview('');
+    }
+
+    async function saveProduct() {
+      const data = {
+        name:        document.getElementById('pm-name').value.trim(),
+        type:        document.getElementById('pm-type').value,
+        description: document.getElementById('pm-description').value.trim(),
+        price:       parseInt(document.getElementById('pm-price').value),
+        hotel:       document.getElementById('pm-hotel').value || null,
+        duration:    document.getElementById('pm-duration').value ? parseInt(document.getElementById('pm-duration').value) : null,
+        max_quantity:document.getElementById('pm-max').value ? parseInt(document.getElementById('pm-max').value) : null,
+        sort_order:  parseInt(document.getElementById('pm-sort').value) || 99,
+        active:      document.getElementById('pm-active').checked ? 1 : 0,
+        image_url:   document.getElementById('pm-image-url').value || null,
+      };
+      if (!data.name || isNaN(data.price)) { showToast('Nombre y precio son obligatorios', 'warning'); return; }
+      try {
+        let savedProduct;
+        if (_editProductId) {
+          const { product } = await AdminAPI.updateProduct(_editProductId, data);
+          savedProduct = product;
+        } else {
+          const { product } = await AdminAPI.createProduct(data);
+          savedProduct = product;
+          // Si hay imagen pendiente, subirla ahora que tenemos ID
+          const file = document.getElementById('pm-image-file').files?.[0];
+          if (file && savedProduct?.id) {
+            try {
+              const { imageUrl } = await AdminAPI.uploadProductImage(savedProduct.id, file);
+              if (imageUrl) await AdminAPI.updateProduct(savedProduct.id, { image_url: imageUrl });
+            } catch { /* imagen no crítica */ }
+          }
+        }
+        showToast('Producto guardado', 'success');
+        closeModal('product-modal');
+        loadProducts();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    // ── COUPONS ──────────────────────────────────────
+    async function loadCoupons() {
+      const tbody = document.getElementById('coupons-tbody');
+      try {
+        const { coupons } = await CouponsAPI.list();
+        if (!coupons.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Sin cupones</td></tr>';
+          return;
+        }
+        tbody.innerHTML = coupons.map(c => `
+          <tr>
+            <td><code style="font-size:.85rem;">${c.code}</code></td>
+            <td>${c.discount_pct}%</td>
+            <td>${c.uses}</td>
+            <td>${c.max_uses ?? '∞'}</td>
+            <td style="font-size:.8rem;">${c.expires_at ? new Date(c.expires_at).toLocaleDateString('es-ES') : '—'}</td>
+            <td><span style="color:${c.active ? 'var(--success)' : 'var(--danger)'};">${c.active ? 'Activo' : 'Inactivo'}</span></td>
+            <td style="display:flex;gap:.3rem;">
+              <button class="act-btn act-edit" onclick="openCouponModal('${c.id}')">✏️</button>
+              <button class="act-btn act-cancel" onclick="toggleCoupon('${c.id}',${c.active?0:1})">${c.active?'Desactivar':'Activar'}</button>
+              <button class="act-btn act-cancel" style="background:rgba(255,60,60,.1);border-color:rgba(255,60,60,.3);" onclick="deleteCoupon('${c.id}')">🗑</button>
+            </td>
+          </tr>`).join('');
+      } catch (e) { tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger);">${e.message}</td></tr>`; }
+    }
+
+    let _editCouponId = null;
+    function openCouponModal(id) {
+      _editCouponId = id || null;
+      document.getElementById('cm-title').textContent = id ? 'Editar cupón' : 'Nuevo cupón';
+      document.getElementById('cm-id').value       = id || '';
+      document.getElementById('cm-code').value     = '';
+      document.getElementById('cm-discount').value = '';
+      document.getElementById('cm-max-uses').value = '';
+      document.getElementById('cm-expires').value  = '';
+      openModal('coupon-modal');
+    }
+
+    async function saveCoupon() {
+      const id       = document.getElementById('cm-id').value;
+      const code     = document.getElementById('cm-code').value.trim();
+      const discount = parseInt(document.getElementById('cm-discount').value);
+      const maxUses  = document.getElementById('cm-max-uses').value ? parseInt(document.getElementById('cm-max-uses').value) : null;
+      const expires  = document.getElementById('cm-expires').value || null;
+      if (!discount || isNaN(discount)) { showToast('Descuento obligatorio', 'warning'); return; }
+      try {
+        if (id) {
+          await CouponsAPI.update(id, { discount_pct: discount, max_uses: maxUses, expires_at: expires });
+        } else {
+          if (!code) { showToast('Código obligatorio', 'warning'); return; }
+          await CouponsAPI.create({ code, discount_pct: discount, max_uses: maxUses, expires_at: expires });
+        }
+        showToast('Cupón guardado', 'success');
+        closeModal('coupon-modal');
+        loadCoupons();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    async function toggleCoupon(id, active) {
+      try { await CouponsAPI.update(id, { active }); loadCoupons(); } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    async function deleteCoupon(id) {
+      if (!confirm('¿Eliminar este cupón?')) return;
+      try { await CouponsAPI.remove(id); showToast('Cupón eliminado', 'success'); loadCoupons(); } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    // ── TICKETS (ADMIN) ──────────────────────────────
+    let _adminTicketId = null;
+
+    async function loadAdminTickets() {
+      const tbody = document.getElementById('tickets-admin-tbody');
+      const status = document.getElementById('ticket-filter-status')?.value || '';
+      try {
+        const { tickets } = await TicketsAPI.all(status ? { status } : {});
+        if (!tickets.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Sin tickets</td></tr>';
+          return;
+        }
+        tbody.innerHTML = tickets.map(t => `
+          <tr>
+            <td style="font-size:.75rem;color:var(--text-muted);">${t.id.slice(0,8)}…</td>
+            <td>${t.username || t.user_id}</td>
+            <td>${t.subject}</td>
+            <td><span style="color:${t.status==='open'?'var(--warning)':'var(--text-muted)'};">${t.status==='open'?'Abierto':'Cerrado'}</span></td>
+            <td style="font-size:.8rem;">${new Date(t.created_at).toLocaleDateString('es-ES')}</td>
+            <td><button class="act-btn act-edit" onclick="openAdminTicket('${t.id}')">Ver</button></td>
+          </tr>`).join('');
+      } catch (e) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--danger);">${e.message}</td></tr>`; }
+    }
+
+    async function openAdminTicket(id) {
+      _adminTicketId = id;
+      try {
+        const { ticket, messages } = await TicketsAPI.get(id);
+        document.getElementById('tam-subject').textContent = ticket.subject;
+        document.getElementById('tam-reply').value = '';
+        document.getElementById('tam-close-btn').style.display = ticket.status === 'open' ? 'block' : 'none';
+        document.getElementById('tam-messages').innerHTML = messages.map(m => `
+          <div style="padding:.65rem .85rem;border-radius:8px;background:${m.is_admin ? 'rgba(155,48,255,.12)' : 'rgba(0,195,255,.07)'};border:1px solid ${m.is_admin ? 'rgba(155,48,255,.2)' : 'rgba(0,195,255,.15)'};">
+            <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:.25rem;">${m.is_admin ? '🛡 Admin' : '👤 Usuario'} · ${new Date(m.created_at).toLocaleString('es-ES')}</div>
+            <div style="font-size:.86rem;">${m.message.replace(/\n/g,'<br>')}</div>
+          </div>`).join('');
+        openModal('ticket-admin-modal');
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    async function adminReplyTicket() {
+      const msg = document.getElementById('tam-reply').value.trim();
+      if (!msg || !_adminTicketId) return;
+      try {
+        await TicketsAPI.reply(_adminTicketId, msg);
+        showToast('Respuesta enviada', 'success');
+        openAdminTicket(_adminTicketId);
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    async function adminCloseTicket() {
+      if (!_adminTicketId) return;
+      try {
+        await TicketsAPI.setStatus(_adminTicketId, 'closed');
+        showToast('Ticket cerrado', 'success');
+        closeModal('ticket-admin-modal');
+        loadAdminTickets();
+      } catch (e) { showToast(e.message, 'danger'); }
+    }
+
+    // ── Helpers ──────────────────────────────────────
+    function openModal(id)  { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+    function fmtDate(d) { return d ? new Date(d).toLocaleDateString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—'; }
+    function roleBadge(r)   { return `<span class="badge-role-${r}">${r}</span>`; }
+    function orderBadge(s)  { return `<span class="badge-order-${s}">${{pending:'Pendiente',active:'Activo',completed:'Completado',cancelled:'Cancelado',failed:'Fallido'}[s]||s}</span>`; }
+
+    // Cerrar modales al clic fuera
+    document.querySelectorAll('.modal-overlay').forEach(el => {
+      el.addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+    });
+
+    // Carga inicial
+    loadOverview();
   </script>
 </DashLayout>

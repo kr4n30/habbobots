@@ -146,30 +146,60 @@ import DashLayout from '../layouts/DashLayout.astro';
   <!-- Payment methods -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
 
-    <!-- Traditional payment -->
+    <!-- Online payment -->
     <div class="hb-window">
       <div class="hb-window-title"><h3>💳 Pago online</h3></div>
       <div class="hb-window-body">
-        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem;">Pago seguro con tarjeta o PayPal.</p>
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem;">Elige tu método de pago preferido.</p>
         <div style="display:flex;flex-direction:column;gap:.6rem;">
-          <div class="pay-method hb-window selected" id="pay-stripe" onclick="selectPayment('stripe')">
+          <div class="pay-method hb-window selected" id="pay-paypal" onclick="selectPayment('paypal')">
+            <div class="pay-icon">🅿</div>
+            <div class="pay-info">
+              <div class="pay-name">PayPal</div>
+              <div class="pay-desc">Redirige a PayPal — rápido y seguro</div>
+            </div>
+            <div class="pay-radio"></div>
+          </div>
+          <div class="pay-method hb-window" id="pay-nowpayments" onclick="selectPayment('nowpayments')">
+            <div class="pay-icon">₿</div>
+            <div class="pay-info">
+              <div class="pay-name">Crypto</div>
+              <div class="pay-desc">BTC, ETH, USDT, LTC y más</div>
+            </div>
+            <div class="pay-radio"></div>
+          </div>
+          <div class="pay-method hb-window" id="pay-stripe" onclick="selectPayment('stripe')">
             <div class="pay-icon">💳</div>
             <div class="pay-info">
-              <div class="pay-name">Tarjeta / Stripe</div>
+              <div class="pay-name">Tarjeta (próximamente)</div>
               <div class="pay-desc">Visa, Mastercard, AMEX</div>
             </div>
             <div class="pay-radio"></div>
           </div>
-          <div class="pay-method hb-window" id="pay-paypal" onclick="selectPayment('paypal')">
-            <div class="pay-icon">🅿</div>
-            <div class="pay-info">
-              <div class="pay-name">PayPal</div>
-              <div class="pay-desc">Rápido y seguro</div>
-            </div>
-            <div class="pay-radio"></div>
+        </div>
+
+        <!-- Selector de moneda crypto (visible solo cuando se selecciona crypto) -->
+        <div id="crypto-currency-row" style="display:none;margin-top:.75rem;gap:.4rem;flex-wrap:wrap;">
+          <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:.4rem;width:100%;">Moneda de pago:</p>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;" id="crypto-currency-btns">
+            <button class="hb-btn hb-btn-ghost crypto-cur active-cur" data-cur="btc"  onclick="selectCrypto('btc')">BTC</button>
+            <button class="hb-btn hb-btn-ghost crypto-cur"            data-cur="eth"  onclick="selectCrypto('eth')">ETH</button>
+            <button class="hb-btn hb-btn-ghost crypto-cur"            data-cur="usdt" onclick="selectCrypto('usdt')">USDT</button>
+            <button class="hb-btn hb-btn-ghost crypto-cur"            data-cur="ltc"  onclick="selectCrypto('ltc')">LTC</button>
+            <button class="hb-btn hb-btn-ghost crypto-cur"            data-cur="sol"  onclick="selectCrypto('sol')">SOL</button>
           </div>
         </div>
-        <button class="hb-btn" id="pay-btn" onclick="processPay()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:1rem;" disabled>
+
+        <!-- Cupón de descuento -->
+        <div style="display:flex;gap:.4rem;margin-top:.85rem;">
+          <input type="text" id="coupon-input" class="hb-input" placeholder="Código de descuento (opcional)"
+                 style="flex:1;text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
+          <button class="hb-btn hb-btn-ghost" onclick="validateCoupon()" style="padding:.4rem .8rem;font-size:.8rem;white-space:nowrap;">Aplicar</button>
+        </div>
+        <p id="coupon-status" style="font-size:.75rem;margin:.3rem 0 0;min-height:1.1em;"></p>
+
+        <button class="hb-btn" id="pay-btn" onclick="processPay()"
+          style="width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.75rem;" disabled>
           🔒 Pagar — selecciona un pack
         </button>
       </div>
@@ -189,7 +219,8 @@ import DashLayout from '../layouts/DashLayout.astro';
           <li>El sistema confirma el pago automáticamente via API</li>
           <li>¡Los créditos se acreditan en tu cuenta!</li>
         </ul>
-        <button class="hb-btn hb-btn-purple" onclick="openInGamePayment()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.5rem;">
+        <button class="hb-btn hb-btn-purple" onclick="openInGamePayment()"
+          style="width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.5rem;">
           🏨 Abrir sala en Habbo
         </button>
       </div>
@@ -201,79 +232,261 @@ import DashLayout from '../layouts/DashLayout.astro';
   <div class="hb-overlay hidden" id="pay-modal">
     <div class="hb-alert hb-alert-purple">
       <div class="hb-window-title">
-        <h3>Confirmar compra</h3>
-        <span class="hb-close" onclick="document.getElementById('pay-modal').classList.add('hidden')">✕</span>
+        <h3 id="pay-modal-title">Confirmar compra</h3>
+        <span class="hb-close" onclick="closePayModal()">✕</span>
       </div>
-      <div class="hb-alert-body">
+      <div class="hb-alert-body" id="pay-modal-body">
         <p id="pay-modal-text">¿Confirmas la compra del pack <strong>Pro</strong> por <strong>€9.99</strong>?</p>
-        <p style="margin-top:.5rem;font-size:.78rem;color:var(--text-muted);">Serás redirigido a la pasarela de pago segura.</p>
+        <p style="margin-top:.5rem;font-size:.78rem;color:var(--text-muted);" id="pay-modal-sub">Serás redirigido a la pasarela de pago segura.</p>
       </div>
-      <div class="hb-alert-footer">
-        <button class="hb-btn hb-btn-ghost" onclick="document.getElementById('pay-modal').classList.add('hidden')">Cancelar</button>
-        <button class="hb-btn hb-btn-purple" onclick="confirmPayment()">✓ Confirmar y pagar</button>
+      <div class="hb-alert-footer" id="pay-modal-footer">
+        <button class="hb-btn hb-btn-ghost" onclick="closePayModal()">Cancelar</button>
+        <button class="hb-btn hb-btn-purple" id="pay-confirm-btn" onclick="confirmPayment()">✓ Confirmar y pagar</button>
       </div>
     </div>
   </div>
 
-  <script is:inline slot="scripts">
-    let selectedPlan = null;
-    let selectedPayment = 'stripe';
+  <!-- Crypto payment modal -->
+  <div class="hb-overlay hidden" id="crypto-modal">
+    <div class="hb-alert hb-alert-purple" style="max-width:480px;width:95vw;">
+      <div class="hb-window-title">
+        <h3>₿ Pago con Crypto</h3>
+        <span class="hb-close" onclick="document.getElementById('crypto-modal').classList.add('hidden')">✕</span>
+      </div>
+      <div class="hb-alert-body">
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem;">
+          Envía exactamente la cantidad indicada a la dirección de pago. El pago se confirma automáticamente en la blockchain.
+        </p>
+        <div style="background:rgba(0,0,0,.3);border-radius:8px;padding:1rem;margin-bottom:.75rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;">
+            <span style="font-size:.75rem;color:var(--text-muted);">CANTIDAD A ENVIAR</span>
+            <span id="crypto-amount" style="font-family:monospace;font-size:1.1rem;font-weight:700;color:#00c3ff;">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:.75rem;color:var(--text-muted);">MONEDA</span>
+            <span id="crypto-currency-label" style="font-weight:600;">—</span>
+          </div>
+        </div>
+        <div style="background:rgba(0,0,0,.3);border-radius:8px;padding:1rem;margin-bottom:.75rem;">
+          <p style="font-size:.72rem;color:var(--text-muted);margin-bottom:.3rem;">DIRECCIÓN DE PAGO</p>
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <code id="crypto-address" style="font-size:.75rem;word-break:break-all;flex:1;color:#fff;">—</code>
+            <button class="hb-btn hb-btn-ghost" style="padding:.3rem .6rem;font-size:.72rem;flex-shrink:0;" onclick="copyAddress()">Copiar</button>
+          </div>
+        </div>
+        <div id="crypto-qr" style="text-align:center;margin-bottom:.75rem;"></div>
+        <div id="crypto-poll-status" style="font-size:.78rem;color:var(--text-muted);text-align:center;">
+          ⏳ Esperando confirmación en blockchain…
+        </div>
+        <p style="font-size:.72rem;color:var(--text-muted);margin-top:.75rem;text-align:center;">
+          Los créditos se acreditan automáticamente al confirmar la red. Puede tardar unos minutos.
+        </p>
+      </div>
+      <div class="hb-alert-footer">
+        <button class="hb-btn hb-btn-ghost" onclick="document.getElementById('crypto-modal').classList.add('hidden')">Cerrar</button>
+        <a id="crypto-invoice-link" class="hb-btn hb-btn-purple" href="#" target="_blank" style="display:none;">Abrir factura →</a>
+      </div>
+    </div>
+  </div>
 
-    // ── Load real credit balance ───────────────────
+  <style>
+    .crypto-cur { padding: .25rem .6rem; font-size: .75rem; }
+    .active-cur { background: var(--purple-primary) !important; color: #fff !important; border-color: var(--purple-primary) !important; }
+  </style>
+
+  <script is:inline slot="scripts">
+    let selectedPlan     = null;
+    let selectedPayment  = 'paypal';
+    let selectedCrypto   = 'btc';
+    let _cryptoPaymentId = null;
+    let _cryptoPollTimer = null;
+    let _coupon          = null; // { code, discountPct }
+
+    // ── Handle URL params (retorno de PayPal, success, cancelled) ────────────
     (async () => {
       try {
         const { credits } = await CreditsAPI.balance();
         const balEl = document.querySelector('[data-credits-badge]');
         if (balEl) balEl.querySelector('strong').textContent = credits.toLocaleString();
       } catch {}
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('success') === '1')        showToast('¡Pago completado! Créditos añadidos.', 'success');
+      if (params.get('crypto_success') === '1') showToast('¡Pago crypto recibido! Los créditos se acreditarán al confirmarse.', 'success');
+      if (params.get('cancelled') === '1')      showToast('Pago cancelado.', 'warning');
+      if (params.get('success') || params.get('cancelled') || params.get('crypto_success')) {
+        history.replaceState({}, '', '/tienda');
+      }
     })();
 
     function selectPlan(name, credits, price) {
       selectedPlan = { name, credits, price, packId: name.toLowerCase() };
+      updatePayBtn();
+      document.querySelectorAll('.plan-card').forEach(c => c.style.outline = 'none');
+      showToast(`Pack ${name} seleccionado`, 'info');
+    }
+
+    function updatePayBtn() {
+      if (!selectedPlan) return;
       const btn = document.getElementById('pay-btn');
-      btn.textContent = `🔒 Pagar ${name} — €${price}`;
+      if (_coupon) {
+        const final = (selectedPlan.price * (1 - _coupon.discountPct / 100)).toFixed(2);
+        btn.textContent = `🔒 Pagar ${selectedPlan.name} — €${final} (-${_coupon.discountPct}%)`;
+      } else {
+        btn.textContent = `🔒 Pagar ${selectedPlan.name} — €${selectedPlan.price}`;
+      }
       btn.removeAttribute('disabled');
-      btn.style.opacity = '1';
-      showToast(`Pack ${name} seleccionado: ${credits} créditos`, 'info');
+    }
+
+    async function validateCoupon() {
+      const code = document.getElementById('coupon-input').value.trim();
+      const statusEl = document.getElementById('coupon-status');
+      if (!code) { _coupon = null; statusEl.textContent = ''; updatePayBtn(); return; }
+      statusEl.textContent = 'Verificando…';
+      statusEl.style.color = 'var(--text-muted)';
+      try {
+        const { valid, discountPct } = await CouponsAPI.validate(code);
+        if (valid) {
+          _coupon = { code, discountPct };
+          statusEl.textContent = `✅ Cupón aplicado: -${discountPct}%`;
+          statusEl.style.color = 'var(--success)';
+          updatePayBtn();
+        }
+      } catch (e) {
+        _coupon = null;
+        statusEl.textContent = `❌ ${e.message}`;
+        statusEl.style.color = 'var(--danger)';
+        updatePayBtn();
+      }
     }
 
     function selectPayment(method) {
       selectedPayment = method;
       document.querySelectorAll('.pay-method').forEach(el => el.classList.remove('selected'));
-      document.getElementById('pay-' + method).classList.add('selected');
+      document.getElementById('pay-' + method)?.classList.add('selected');
+      document.getElementById('crypto-currency-row').style.display =
+        method === 'nowpayments' ? 'flex' : 'none';
+    }
+
+    function selectCrypto(cur) {
+      selectedCrypto = cur;
+      document.querySelectorAll('.crypto-cur').forEach(b => b.classList.remove('active-cur'));
+      document.querySelector(`[data-cur="${cur}"]`)?.classList.add('active-cur');
+    }
+
+    function closePayModal() {
+      document.getElementById('pay-modal').classList.add('hidden');
     }
 
     function processPay() {
-      if (!selectedPlan) return;
+      if (!selectedPlan) { showToast('Selecciona un pack primero', 'warning'); return; }
+      if (selectedPayment === 'stripe') {
+        showToast('Tarjeta / Stripe próximamente', 'info'); return;
+      }
+      const finalPrice = _coupon
+        ? (selectedPlan.price * (1 - _coupon.discountPct / 100)).toFixed(2)
+        : selectedPlan.price;
+      const discountStr = _coupon ? ` <span style="color:var(--success);font-size:.8em;">(-${_coupon.discountPct}%)</span>` : '';
       document.getElementById('pay-modal-text').innerHTML =
-        `¿Confirmas la compra del pack <strong>${selectedPlan.name}</strong> por <strong>€${selectedPlan.price}</strong>?`;
+        `¿Confirmas la compra del pack <strong>${selectedPlan.name}</strong> por <strong>€${finalPrice}</strong>${discountStr}?`;
+      document.getElementById('pay-modal-sub').textContent =
+        selectedPayment === 'paypal'
+          ? 'Serás redirigido a PayPal para completar el pago.'
+          : `Se generará una dirección de pago en ${selectedCrypto.toUpperCase()}.`;
       document.getElementById('pay-modal').classList.remove('hidden');
     }
 
     async function confirmPayment() {
-      document.getElementById('pay-modal').classList.add('hidden');
-      showToast('Procesando…', 'info');
+      closePayModal();
+      showToast('Generando pago…', 'info');
       try {
-        const result = await CreditsAPI.checkout(selectedPlan.packId, selectedPayment);
+        const result = await CreditsAPI.checkout(selectedPlan.packId, selectedPayment, selectedCrypto, _coupon?.code);
+
         if (result.stub) {
-          // Dev mode — backend returns a stub
-          showToast(`Dev: ${result.message}`, 'info');
-        } else if (result.clientSecret) {
-          // Production: initiate Stripe.js payment
-          showToast('Redirigiendo a Stripe…', 'info');
-          // window.Stripe(PUBLISHABLE_KEY).redirectToCheckout(...)
-        } else if (result.approvalUrl) {
-          window.location.href = result.approvalUrl;
-        } else {
-          showToast(result.message || '¡Créditos añadidos!', 'success');
+          showToast(result.message, 'info'); return;
         }
+
+        // ── PayPal ──────────────────────────────────────────────────────────
+        if (result.approvalUrl) {
+          showToast('Redirigiendo a PayPal…', 'info');
+          setTimeout(() => { window.location.href = result.approvalUrl; }, 800);
+          return;
+        }
+
+        // ── NOWPayments (crypto) ────────────────────────────────────────────
+        if (result.payAddress) {
+          _cryptoPaymentId = result.paymentId;
+          document.getElementById('crypto-amount').textContent =
+            `${result.payAmount} ${result.payCurrency?.toUpperCase()}`;
+          document.getElementById('crypto-currency-label').textContent =
+            result.payCurrency?.toUpperCase();
+          document.getElementById('crypto-address').textContent = result.payAddress;
+
+          // QR code via qrserver.com (no deps)
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(result.payAddress)}`;
+          document.getElementById('crypto-qr').innerHTML =
+            `<img src="${qrUrl}" alt="QR" style="border-radius:8px;border:4px solid rgba(255,255,255,.1);" />`;
+
+          if (result.invoiceUrl) {
+            const lnk = document.getElementById('crypto-invoice-link');
+            lnk.href = result.invoiceUrl;
+            lnk.style.display = 'flex';
+          }
+
+          document.getElementById('crypto-modal').classList.remove('hidden');
+          startCryptoPoll(_cryptoPaymentId);
+          return;
+        }
+
+        showToast(result.message || '¡Listo!', 'success');
       } catch (err) {
-        showToast(err.message || 'Error al procesar el pago', 'danger');
+        showToast(err.message || 'Error al generar el pago', 'danger');
+      }
+    }
+
+    // Polling cada 15 segundos para ver si el pago crypto fue confirmado
+    function startCryptoPoll(paymentId) {
+      clearInterval(_cryptoPollTimer);
+      _cryptoPollTimer = setInterval(async () => {
+        try {
+          const { payment } = await CreditsAPI.paymentStatus(paymentId);
+          const statusEl = document.getElementById('crypto-poll-status');
+          if (!statusEl) { clearInterval(_cryptoPollTimer); return; }
+
+          if (payment.status === 'completed') {
+            clearInterval(_cryptoPollTimer);
+            statusEl.textContent = '✅ ¡Pago confirmado! Créditos añadidos a tu cuenta.';
+            statusEl.style.color = 'var(--success)';
+            const { credits } = await CreditsAPI.balance().catch(() => ({ credits: null }));
+            if (credits !== null) {
+              showToast(`¡+${payment.credits} créditos acreditados!`, 'success');
+              const balEl = document.querySelector('[data-credits-badge]');
+              if (balEl) balEl.querySelector('strong').textContent = credits.toLocaleString();
+            }
+          } else {
+            const labels = {
+              pending: '⏳ Esperando pago…',
+              waiting: '⏳ Esperando transacción…',
+              confirming: '🔄 Confirmando en blockchain…',
+              partially_paid: '⚠ Pago parcial recibido',
+              failed: '❌ Pago fallido',
+              expired: '❌ Pago expirado',
+            };
+            statusEl.textContent = labels[payment.status] || `Estado: ${payment.status}`;
+          }
+        } catch {}
+      }, 15_000);
+    }
+
+    function copyAddress() {
+      const addr = document.getElementById('crypto-address')?.textContent;
+      if (addr && addr !== '—') {
+        navigator.clipboard.writeText(addr).then(() => showToast('Dirección copiada', 'success'));
       }
     }
 
     function openInGamePayment() {
-      showToast('Abriendo sala HabboBots Shop en habbo.es…', 'info');
+      showToast('Ve a la sala HabboBots Shop en habbo.es', 'info');
     }
   </script>
 </DashLayout>
